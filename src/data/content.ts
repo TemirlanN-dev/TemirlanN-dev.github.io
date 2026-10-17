@@ -3,15 +3,16 @@
 export const SECTION_IDS = ['projects', 'experience', 'stats', 'about', 'contact'] as const
 export type SectionId = (typeof SECTION_IDS)[number]
 
-export type MenuItem = { id: SectionId | 'exit'; label: string; desc: string }
+/** `command` is the line shown bottom-right while the item is highlighted. */
+export type MenuItem = { id: SectionId | 'exit'; label: string; command: string }
 
 export const MENU: MenuItem[] = [
-  { id: 'projects', label: 'Projects', desc: 'Six pinned repos, from a Go CLI to a roguelike.' },
-  { id: 'experience', label: 'Experience', desc: 'Ante, UBC Launch Pad, Tiptap and UBC.' },
-  { id: 'stats', label: 'Stats', desc: 'Records set and skills learned.' },
-  { id: 'about', label: 'About', desc: "Who's playing." },
-  { id: 'contact', label: 'Contact', desc: 'Email, LinkedIn and GitHub.' },
-  { id: 'exit', label: 'Exit', desc: 'Back to the arcade.' },
+  { id: 'projects', label: 'Projects', command: 'Browse my builds' },
+  { id: 'experience', label: 'Experience', command: "See where I've worked" },
+  { id: 'stats', label: 'Stats', command: 'Check my numbers' },
+  { id: 'about', label: 'About', command: 'Meet the player' },
+  { id: 'contact', label: 'Contact', command: 'Send a message' },
+  { id: 'exit', label: 'Exit', command: 'Back to the arcade' },
 ]
 
 export const PROFILE = {

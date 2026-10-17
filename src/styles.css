@@ -8,6 +8,7 @@
   --cyan: #5fe3ff;
   --ice: #e8fbff;
   --pink: #ff4fa3;
+  --red: #e5232e;
   --text: #f2f8ff;
   --muted: #a3bce8;
   --glass: rgba(6, 19, 68, 0.62);
@@ -338,17 +339,7 @@ a {
 }
 
 .water.is-fallback {
-  background: radial-gradient(120% 90% at 70% 20%, #1238a8 0%, var(--navy-900) 45%, var(--navy-950) 100%);
-}
-
-/* faint scanlines over everything */
-.menu::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px);
+  background: linear-gradient(160deg, #73d0ff 0%, #2a73ec 45%, #1a22b8 100%);
 }
 
 .flash {
@@ -367,131 +358,475 @@ a {
   z-index: 40;
   width: 75vw;
   pointer-events: none;
-  background: linear-gradient(90deg, var(--blue-500) 0 52%, var(--ice) 52% 57%, var(--cyan) 57% 100%);
+  background: linear-gradient(90deg, #2b56f0 0 50%, #ffffff 50% 56%, var(--red) 56% 60%, #8fdcff 60% 100%);
 }
 
-.menu-brand {
-  position: absolute;
-  top: var(--gutter);
-  left: var(--gutter);
-  display: grid;
-  gap: 0.3rem;
-}
-
-.menu-name {
-  font: 800 italic clamp(1.2rem, 2.4vw, 1.7rem)/1 var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.menu-role {
-  font-size: 0.9rem;
-  color: var(--muted);
-}
+/* ---------- main menu (modelled on the Persona 3 Reload pause menu) ---------- */
 
 .main-menu {
   position: absolute;
   inset: 0;
 }
 
-.menu-list {
+/* parallax layers: --depth px of drift at the screen edge, fed by --px/--py */
+.layer {
   position: absolute;
-  left: clamp(1rem, 8vw, 9rem);
+  inset: 0;
+  pointer-events: none;
+  translate: calc(var(--px, 0) * var(--depth, 0) * 1px) calc(var(--py, 0) * var(--depth, 0) * 0.6px);
+  transition: translate 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.layer a,
+.layer button {
+  pointer-events: auto;
+}
+
+/* left: white panel, moon, giant name */
+.art {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(46vw, 56rem);
+}
+
+.art-panel {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, #ffffff 0%, #f1faff 65%, #dff3ff 100%);
+  clip-path: polygon(0 0, 100% 0, 70% 100%, 0 100%);
+}
+
+.art-edge {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.art-name {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  rotate: 180deg;
+  white-space: nowrap;
+  font: 800 italic 20vh/0.8 'Barlow Semi Condensed', var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+.art-name-first {
+  color: #0b0b12;
+}
+
+.art-name-last {
+  color: #a3a3b0;
+}
+
+.art-moon {
+  position: absolute;
+  left: 8vw;
   top: 50%;
-  translate: 0 -54%;
-  rotate: -8deg;
-  transform-origin: left center;
+  /* small enough that the horns stop short of the menu list at 41vw */
+  height: min(62vh, 44vw);
+  width: auto;
+  aspect-ratio: 1;
+  overflow: visible;
+  translate: 0 -50%;
+  animation: moon-sway 14s ease-in-out infinite alternate;
+}
+
+@keyframes moon-sway {
+  from {
+    rotate: -4deg;
+    translate: 0 -51%;
+  }
+  to {
+    rotate: 3deg;
+    translate: 0 -49%;
+  }
+}
+
+.shard {
+  position: absolute;
+  opacity: 0.9;
+  animation: shard-drift 10s ease-in-out infinite alternate;
+}
+
+@keyframes shard-drift {
+  to {
+    transform: translate(18px, -26px) rotate(140deg);
+  }
+}
+
+/* top-left: the "current wallet" box */
+.player-box {
+  position: absolute;
+  z-index: 3;
+  top: clamp(1rem, 5vh, 3rem);
+  left: clamp(4.5rem, 9vw, 9rem);
+  min-width: 15rem;
+  padding: 0.55rem 1.1rem 0.5rem;
+  color: #0b0b12;
+  background: #fff;
+  border: 2px solid #0b0b12;
+  box-shadow: 4px 4px 0 rgba(11, 11, 18, 0.15);
+}
+
+.player-name {
+  font: 500 clamp(1.3rem, 2.2vw, 1.9rem) / 1.05 var(--font-body);
+  letter-spacing: -0.02em;
+}
+
+.player-label {
+  margin-top: 0.1rem;
+  font: 700 italic 0.78rem var(--font-body);
+}
+
+.menu-sound {
+  position: absolute;
+  z-index: 3;
+  top: calc(clamp(1rem, 5vh, 3rem) + 5.4rem);
+  left: clamp(4.5rem, 9vw, 9rem);
+}
+
+.menu-sound .chip-btn {
+  color: #0b0b12;
+  background: #fff;
+}
+
+.menu-sound .chip-btn:hover,
+.menu-sound .chip-btn:focus-visible {
+  background: var(--cyan);
+}
+
+/* centre: the stacked, overlapping command list */
+.menu-list {
+  --menu-size: clamp(2.6rem, 8.2vh, 5.4rem);
+  position: absolute;
+  left: 41vw;
+  top: 50%;
+  translate: 0 -52%;
+  rotate: -9deg;
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: clamp(0.1rem, 0.7vh, 0.5rem);
 }
 
 .menu-list li {
-  margin-left: calc(var(--i) * clamp(0.6rem, 1.6vw, 1.7rem));
+  margin-left: calc(var(--x) * var(--menu-size));
+  animation: bob var(--bob) ease-in-out var(--bob-delay) infinite alternate;
+}
+
+.menu-list li + li {
+  margin-top: calc(var(--menu-size) * -0.16);
+}
+
+.menu-list li.is-selected {
+  position: relative;
+  z-index: 2;
+}
+
+.tint-0 {
+  --tint: #8fdcff;
+}
+
+.tint-1 {
+  --tint: #6cc6f6;
+}
+
+.tint-2 {
+  --tint: #a9e9ff;
+}
+
+@keyframes bob {
+  to {
+    translate: 4px -5px;
+  }
 }
 
 .menu-item {
   position: relative;
+  isolation: isolate;
   display: inline-block;
-  padding: 0.04em 0.4em 0.08em 0.3em;
-  font: 800 italic clamp(2.5rem, 8.2vh, 5.6rem)/0.92 var(--font-display);
+  padding: 0.05em 0.12em;
+  font: 800 italic calc(var(--menu-size) * var(--size)) / 0.86 'Barlow Semi Condensed', var(--font-display);
+  letter-spacing: -0.04em;
   text-transform: uppercase;
-  color: rgba(186, 222, 255, 0.45);
+  color: var(--tint);
+  transform: skewX(-8deg);
   transition:
-    color 0.15s,
-    letter-spacing 0.2s;
+    color 0.12s,
+    scale 0.18s cubic-bezier(0.2, 1.3, 0.4, 1),
+    rotate 0.18s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+
+.menu-item:hover {
+  color: #d6f6ff;
 }
 
 .menu-item:focus-visible {
   outline: none;
 }
 
-.menu-item:hover {
-  color: rgba(232, 251, 255, 0.8);
-}
-
 .menu-item.is-active {
-  color: var(--navy-900);
-  letter-spacing: 0.015em;
+  color: #07070c;
+  scale: 1.24;
+  rotate: -6deg;
+  animation:
+    item-pop 0.3s cubic-bezier(0.2, 1.5, 0.4, 1) both,
+    item-breathe 1.8s ease-in-out 0.3s infinite alternate;
 }
 
-.menu-item.is-small {
-  margin-top: 0.35em;
-  font-size: clamp(1.5rem, 4.4vh, 2.7rem);
+@keyframes item-pop {
+  from {
+    scale: 1.5;
+  }
+  to {
+    scale: 1.24;
+  }
+}
+
+@keyframes item-breathe {
+  from {
+    scale: 1.24;
+  }
+  to {
+    scale: 1.28;
+  }
 }
 
 .menu-label {
   position: relative;
-  z-index: 1;
 }
 
-.menu-highlight {
+.menu-hl {
   position: absolute;
-  inset: 0 -0.12em;
-  z-index: 0;
+  left: -10%;
+  top: -55%;
+  z-index: -1;
+  width: 122%;
+  height: 190%;
+  overflow: visible;
+  pointer-events: none;
 }
 
-.menu-highlight-face,
-.menu-highlight-shadow {
+.hl-blade {
+  fill: #fff;
+  transform-box: fill-box;
+  transform-origin: 0% 100%;
+  animation: hl-in 0.24s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+
+.hl-pink {
+  fill: #ff86bd;
+}
+
+.hl-red {
+  fill: var(--red);
+  transform-box: fill-box;
+  transform-origin: 0% 100%;
+  animation:
+    hl-in 0.2s 0.07s cubic-bezier(0.2, 0.9, 0.25, 1) both,
+    red-jitter 2.4s steps(1) 0.4s infinite;
+}
+
+@keyframes hl-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes red-jitter {
+  92% {
+    translate: 1px -1px;
+  }
+  96% {
+    translate: -1px 1px;
+  }
+}
+
+/* top-right: link cards standing in for the party portraits */
+.cards {
+  position: absolute;
+  top: clamp(1rem, 4vh, 2.5rem);
+  right: clamp(1rem, 3vw, 2.5rem);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.7rem;
+}
+
+.card-link {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.55rem 0.6rem;
+  width: 11rem;
+  padding: 0.8rem 1.3rem 0.85rem 1.4rem;
+  color: #fff;
+  text-decoration: none;
+  animation: card-float 3.2s ease-in-out infinite alternate;
+  transition: scale 0.15s;
+}
+
+.card-link:nth-child(2) {
+  margin-right: 1.4rem;
+}
+
+.card-link:hover,
+.card-link:focus-visible {
+  scale: 1.06;
+  outline: none;
+}
+
+.card-frame {
   position: absolute;
   inset: 0;
-  clip-path: polygon(0.4em 0, 100% 0, calc(100% - 0.4em) 100%, 0 100%);
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.menu-highlight-shadow {
-  translate: 0.22em 0.16em;
-  background: var(--pink);
+.card-frame polygon {
+  fill: rgba(12, 30, 120, 0.55);
+  stroke: var(--ice);
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+  transition: fill 0.15s;
 }
 
-.menu-highlight-face {
-  background: linear-gradient(100deg, #ffffff 0%, var(--ice) 45%, var(--cyan) 100%);
+.card-link:hover .card-frame polygon,
+.card-link:focus-visible .card-frame polygon {
+  fill: rgba(95, 227, 255, 0.5);
 }
 
-.menu-info {
-  position: absolute;
-  right: clamp(1.25rem, 6vw, 6rem);
-  bottom: clamp(5rem, 15vh, 9rem);
-  max-width: min(30rem, 40vw);
-  text-align: right;
-  rotate: -4deg;
+.card-icon {
+  display: grid;
+  place-items: center;
 }
 
-.menu-info-num {
+.card-label {
+  font: 800 italic 1.2rem 'Barlow Semi Condensed', var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.card-bars {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  transform: skewX(-20deg) rotate(-3deg);
+}
+
+.bar {
+  position: relative;
   display: block;
-  font: 800 italic clamp(6rem, 24vh, 15rem)/0.8 var(--font-display);
-  color: transparent;
-  -webkit-text-stroke: 2px rgba(232, 251, 255, 0.5);
+  height: 6px;
+  overflow: hidden;
+  background: rgba(2, 8, 35, 0.6);
 }
 
-.menu-info-desc {
-  margin-top: 0.6rem;
-  font: 800 italic clamp(1.3rem, 2.6vw, 2rem)/1.1 var(--font-display);
-  color: var(--ice);
-  text-shadow: 0 2px 18px rgba(2, 8, 35, 0.7);
+.bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  transform-origin: left;
+  animation: bar-fill 0.9s 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.bar-hp {
+  color: var(--cyan);
+}
+
+.bar-sp {
+  width: 82%;
+  color: #ffe14a;
+}
+
+@keyframes bar-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes card-float {
+  to {
+    translate: 0 -4px;
+  }
+}
+
+/* bottom-right: what the highlighted command does */
+.command {
+  position: absolute;
+  right: 0;
+  bottom: clamp(1rem, 4vh, 2.4rem);
+  z-index: 3;
+  width: min(30rem, 44vw);
+  padding-right: var(--gutter);
+  text-align: right;
+  color: #fff;
+}
+
+.command-text {
+  font: 800 italic clamp(1.8rem, 3.2vw, 2.8rem) / 1.05 'Barlow Semi Condensed', var(--font-display);
+  letter-spacing: -0.03em;
+  text-shadow: 0 2px 12px rgba(10, 20, 110, 0.35);
+}
+
+.command-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.1rem calc(-1 * var(--gutter)) 0 30%;
+  font: 700 italic 0.78rem var(--font-body);
+}
+
+.command-rule::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: #fff;
+}
+
+.command-hints {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.1rem;
+  margin-top: 0.7rem;
+  font: 800 italic 1.35rem 'Barlow Semi Condensed', var(--font-display);
+}
+
+.command-hints span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+kbd.round {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.7rem;
+  height: 1.7rem;
+  margin: 0;
+  padding: 0 0.35rem;
+  font: 700 0.72rem/1 var(--font-body);
+  color: #fff;
+  background: transparent;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  clip-path: none;
 }
 
 .hud {
@@ -508,7 +843,9 @@ a {
 .hud-date {
   font: 800 italic clamp(2.3rem, 5vw, 3.6rem)/0.9 var(--font-display);
   color: var(--ice);
-  text-shadow: 3px 3px 0 var(--blue-700);
+  text-shadow:
+    3px 3px 0 var(--navy-900),
+    0 0 18px rgba(6, 19, 68, 0.6);
 }
 
 .hud-dow {
@@ -532,11 +869,14 @@ a {
 }
 
 .hud-time {
-  margin-top: 0.35rem;
+  display: inline-block;
+  margin-top: 0.4rem;
+  padding: 0.15rem 0.5rem 0.1rem;
   font: 700 0.95rem var(--font-display);
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--cyan);
+  color: var(--ice);
+  background: var(--navy-900);
 }
 
 .hud-moon {
@@ -995,30 +1335,56 @@ kbd {
 }
 
 @media (max-width: 760px) {
-  .menu-list {
-    translate: 0 -62%;
-    rotate: -6deg;
+  /* portrait phones: the white art becomes a diagonal band across the top */
+  .art {
+    width: 100vw;
+    height: 40vh;
+    bottom: auto;
   }
 
-  .menu-info {
-    left: var(--gutter);
+  .art-panel {
+    clip-path: polygon(0 0, 100% 0, 100% 35%, 0 100%);
+  }
+
+  .art-edge,
+  .art-name,
+  .layer-cards {
+    display: none;
+  }
+
+  .art-moon {
+    left: -18vw;
+    top: 42%;
+    height: 62vw;
+  }
+
+  .player-box {
+    left: auto;
     right: var(--gutter);
-    bottom: 4.6rem;
-    max-width: none;
-    text-align: left;
-    rotate: 0deg;
+    top: var(--gutter);
+    min-width: 0;
   }
 
-  .menu-info-num {
-    display: none;
+  .player-name {
+    font-size: 1.15rem;
   }
 
-  .menu-info-desc {
-    font-size: 1.2rem;
+  .menu-sound {
+    left: auto;
+    right: var(--gutter);
+    top: calc(var(--gutter) + 4.4rem);
   }
 
-  .menu-role {
-    display: none;
+  .menu-list {
+    --menu-size: clamp(2.3rem, 6.4vh, 3.4rem);
+    left: 10vw;
+    top: 64%;
+    rotate: -7deg;
+  }
+
+  .command {
+    left: var(--gutter);
+    width: auto;
   }
 
   .hud-time {
@@ -1055,10 +1421,6 @@ kbd {
 }
 
 @media (max-width: 520px) {
-  .menu-name {
-    font-size: 1.05rem;
-  }
-
   .hud-date {
     font-size: 2rem;
   }
@@ -1084,7 +1446,13 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
   .blink,
-  .scene {
+  .scene,
+  .art-moon,
+  .shard,
+  .menu-list li,
+  .card-link,
+  .hl-red,
+  .menu-item.is-active {
     animation: none;
   }
 }

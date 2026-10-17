@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { MENU, PROFILE, type MenuItem, type SectionId } from '../data/content'
+import { MENU, type SectionId } from '../data/content'
+import { isCoarsePointer, prefersReducedMotion } from '../lib/env'
 import { sfx } from '../lib/sound'
 import SoundToggle from '../SoundToggle'
 import Hud from './Hud'
+import MainMenu from './MainMenu'
 import Panel from './Panel'
 import WaterBackground from './WaterBackground'
 
@@ -17,10 +19,33 @@ type MenuProps = {
 const isUp = (key: string) => key === 'ArrowUp' || key === 'w' || key === 'W'
 const isDown = (key: string) => key === 'ArrowDown' || key === 's' || key === 'S'
 
+/** Feeds the pointer position to CSS (--px/--py, -1..1) so layers can drift at different depths. */
+function useParallax(ref: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el || isCoarsePointer() || prefersReducedMotion()) return
+    let raf = 0
+    const onMove = (e: PointerEvent) => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        el.style.setProperty('--px', ((e.clientX / window.innerWidth) * 2 - 1).toFixed(3))
+        el.style.setProperty('--py', ((e.clientY / window.innerHeight) * 2 - 1).toFixed(3))
+      })
+    }
+    window.addEventListener('pointermove', onMove)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('pointermove', onMove)
+    }
+  }, [ref])
+}
+
 export default function Menu({ section, onSection, onExit }: MenuProps) {
   const items = onExit ? MENU : MENU.filter((m) => m.id !== 'exit')
   const [index, setIndex] = useState(() => Math.max(0, items.findIndex((m) => m.id === section)))
   const [wipes, setWipes] = useState(0)
+  const root = useRef<HTMLDivElement>(null)
+  useParallax(root)
 
   const open = (i: number) => {
     const item = items[i]
@@ -69,6 +94,7 @@ export default function Menu({ section, onSection, onExit }: MenuProps) {
 
   return (
     <motion.div
+      ref={root}
       className="menu"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1, transition: { duration: 0.3 } }}
@@ -78,17 +104,17 @@ export default function Menu({ section, onSection, onExit }: MenuProps) {
       <WaterBackground />
       <motion.div className="flash" initial={{ opacity: 0.9 }} animate={{ opacity: 0 }} transition={{ duration: 0.7 }} />
 
-      <Hud className={section ? 'is-in-panel' : ''} />
-
       <AnimatePresence mode="wait">
         {section ? (
           <Panel key={section} id={section} onBack={back} />
         ) : (
-          <MainMenu key="main" items={items} index={index} onSelect={select} onFocusItem={setIndex} onOpen={open} />
+          <MainMenu key="main" items={items} index={index} canExit={!!onExit} onSelect={select} onFocusItem={setIndex} onOpen={open} />
         )}
       </AnimatePresence>
 
-      {/* a blue slash across the screen whenever you change pages */}
+      {section && <Hud className="is-in-panel" />}
+
+      {/* a slash across the screen whenever you change pages */}
       {wipes > 0 && (
         <motion.div
           key={wipes}
@@ -100,111 +126,22 @@ export default function Menu({ section, onSection, onExit }: MenuProps) {
         />
       )}
 
-      <footer className={`menu-foot${section ? ' is-in-panel' : ''}`}>
-        <div className="hints">
-          {!section && (
+      {section && (
+        <footer className="menu-foot">
+          <div className="hints">
+            {section === 'projects' && (
+              <span>
+                <kbd>↑</kbd>
+                <kbd>↓</kbd>Browse
+              </span>
+            )}
             <span>
-              <kbd>↑</kbd>
-              <kbd>↓</kbd>Select
+              <kbd>Esc</kbd>Back
             </span>
-          )}
-          {!section && (
-            <span>
-              <kbd>Enter</kbd>Open
-            </span>
-          )}
-          {section === 'projects' && (
-            <span>
-              <kbd>↑</kbd>
-              <kbd>↓</kbd>Browse
-            </span>
-          )}
-          {(section || onExit) && (
-            <span>
-              <kbd>Esc</kbd>
-              {section ? 'Back' : 'Arcade'}
-            </span>
-          )}
-        </div>
-        <SoundToggle />
-      </footer>
-    </motion.div>
-  )
-}
-
-type MainMenuProps = {
-  items: MenuItem[]
-  index: number
-  onSelect: (i: number) => void
-  onFocusItem: (i: number) => void
-  onOpen: (i: number) => void
-}
-
-function MainMenu({ items, index, onSelect, onFocusItem, onOpen }: MainMenuProps) {
-  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
-  const active = items[index]
-
-  // focus follows the highlight (also on mount, when coming back from a panel),
-  // so a native Enter on the focused button always opens the highlighted item
-  useEffect(() => {
-    itemRefs.current[index]?.focus({ preventScroll: true })
-  }, [index])
-
-  return (
-    <motion.div className="main-menu" exit={{ opacity: 0, x: -80, transition: { duration: 0.18 } }}>
-      <div className="menu-brand">
-        <p className="menu-name">{PROFILE.name}</p>
-        <p className="menu-role">{PROFILE.role}</p>
-      </div>
-
-      <nav aria-label="Main menu">
-        <ul className="menu-list">
-          {items.map((item, i) => (
-            <motion.li
-              key={item.id}
-              style={{ '--i': i } as CSSProperties}
-              initial={{ opacity: 0, x: -70 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.08 + i * 0.045, type: 'spring', stiffness: 420, damping: 32 }}
-            >
-              <button
-                ref={(el) => {
-                  itemRefs.current[i] = el
-                }}
-                className={`menu-item${i === index ? ' is-active' : ''}${item.id === 'exit' ? ' is-small' : ''}`}
-                tabIndex={i === index ? 0 : -1}
-                onMouseEnter={() => onSelect(i)}
-                onFocus={() => onFocusItem(i)}
-                onClick={() => onOpen(i)}
-              >
-                {i === index && (
-                  <motion.span layoutId="menu-highlight" className="menu-highlight" transition={{ type: 'spring', stiffness: 600, damping: 38 }}>
-                    <span className="menu-highlight-shadow" />
-                    <span className="menu-highlight-face" />
-                  </motion.span>
-                )}
-                <span className="menu-label">{item.label}</span>
-              </button>
-            </motion.li>
-          ))}
-        </ul>
-      </nav>
-
-      <AnimatePresence mode="popLayout">
-        <motion.aside
-          key={active.id}
-          className="menu-info"
-          initial={{ opacity: 0, x: 40 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.18 }}
-        >
-          <span className="menu-info-num" aria-hidden="true">
-            {String(index + 1).padStart(2, '0')}
-          </span>
-          <p className="menu-info-desc">{active.desc}</p>
-        </motion.aside>
-      </AnimatePresence>
+          </div>
+          <SoundToggle />
+        </footer>
+      )}
     </motion.div>
   )
 }

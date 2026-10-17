@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { prefersReducedMotion } from '../lib/env'
 
-// A full-screen fragment shader: deep blue water with drifting caustics and light shafts.
+// A full-screen fragment shader: bright underwater blue with drifting clouds, caustics and light shafts.
 // Plain WebGL (no three.js) so the menu stays light when visited without the arcade.
 
 const VERTEX = `
@@ -13,6 +13,30 @@ const FRAGMENT = `
 precision mediump float;
 uniform vec2 uResolution;
 uniform float uTime;
+
+float hash(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 4; i++) {
+    v += a * noise(p);
+    p = p * 2.03 + 11.7;
+    a *= 0.5;
+  }
+  return v;
+}
 
 // bright where two warped wave fields cross: reads as light focused by a rippling surface
 float caustic(vec2 p, float t) {
@@ -27,17 +51,26 @@ void main() {
   vec2 p = (gl_FragCoord.xy - 0.5 * uResolution) / uResolution.y;
   float t = uTime;
 
-  vec3 deep = vec3(0.008, 0.03, 0.14);
-  vec3 lit = vec3(0.05, 0.2, 0.62);
-  vec3 color = mix(deep, lit, smoothstep(0.0, 1.2, uv.y * 0.75 + uv.x * 0.45));
+  // pale cyan at the top right, through royal blue, to deep indigo at the bottom left
+  float g = clamp(uv.y * 0.75 + uv.x * 0.35, 0.0, 1.0);
+  vec3 color = mix(vec3(0.1, 0.13, 0.72), vec3(0.16, 0.45, 0.93), smoothstep(0.0, 0.6, g));
+  color = mix(color, vec3(0.45, 0.82, 1.0), smoothstep(0.55, 1.05, g));
 
-  float c = caustic(p * 2.6, t * 0.5) * 0.65 + caustic(p * 4.8 + 7.0, t * 0.7) * 0.45;
-  color += vec3(0.3, 0.75, 1.0) * c * 0.32;
+  // drifting cloud shapes overhead, like light on the surface seen from below
+  float clouds = fbm(vec2(p.x * 2.2 + t * 0.03, p.y * 3.5 - t * 0.012));
+  float cloudMask = smoothstep(0.5, 0.66, clouds) * smoothstep(0.4, 0.95, uv.y);
+  color = mix(color, vec3(0.72, 0.94, 1.0), cloudMask * 0.6);
 
-  float shafts = pow(0.5 + 0.5 * sin((p.x * 0.8 + p.y) * 5.0 - t * 0.25), 8.0);
-  color += vec3(0.15, 0.35, 0.8) * shafts * 0.18 * uv.y;
+  float c = caustic(p * 2.6, t * 0.5) * 0.6 + caustic(p * 4.8 + 7.0, t * 0.7) * 0.4;
+  color += vec3(0.5, 0.85, 1.0) * c * 0.12;
 
-  color *= 0.6 + 0.4 * smoothstep(1.4, 0.1, length(uv - vec2(0.62, 0.7)));
+  // vertical light shafts falling right of centre, gently swaying
+  float sx = p.x - 0.35;
+  float shafts = pow(0.5 + 0.5 * sin(sx * 40.0 + sin(sx * 7.0 + t * 0.3) * 2.0), 4.0);
+  shafts *= smoothstep(0.35, 0.0, abs(sx)) * smoothstep(0.1, 0.9, uv.y);
+  color += vec3(0.55, 0.85, 1.0) * shafts * 0.22;
+
+  color *= 0.8 + 0.2 * smoothstep(0.0, 0.35, uv.y);
   gl_FragColor = vec4(color, 1.0);
 }
 `
