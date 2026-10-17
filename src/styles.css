@@ -342,6 +342,54 @@ a {
   background: linear-gradient(160deg, #73d0ff 0%, #2a73ec 45%, #1a22b8 100%);
 }
 
+.bubbles {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bubble {
+  position: absolute;
+  bottom: -30px;
+  animation: bubble-rise 10s linear infinite;
+}
+
+.bubble i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1.5px solid rgba(232, 251, 255, 0.7);
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.85) 0 18%, rgba(255, 255, 255, 0.1) 40%, transparent 70%);
+  animation: bubble-wobble 2s ease-in-out infinite alternate;
+}
+
+@keyframes bubble-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  10%,
+  85% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(calc(-100vh - 60px));
+  }
+}
+
+@keyframes bubble-wobble {
+  from {
+    transform: translateX(-6px);
+  }
+  to {
+    transform: translateX(6px);
+  }
+}
+
 .flash {
   position: absolute;
   inset: 0;
@@ -428,27 +476,36 @@ a {
   color: #a3a3b0;
 }
 
-.art-moon {
+.art-clouds {
   position: absolute;
-  left: 8vw;
-  top: 50%;
-  /* small enough that the horns stop short of the menu list at 41vw */
-  height: min(62vh, 44vw);
-  width: auto;
-  aspect-ratio: 1;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   overflow: visible;
-  translate: 0 -50%;
-  animation: moon-sway 14s ease-in-out infinite alternate;
 }
 
-@keyframes moon-sway {
+/* each cloud drifts and bobs on its own clock */
+.cloud {
+  animation: cloud-drift 9s ease-in-out infinite alternate;
+}
+
+.cloud-top {
+  animation-duration: 7s;
+  animation-delay: -3s;
+}
+
+.cloud-low {
+  animation-duration: 11s;
+  animation-delay: -6s;
+}
+
+@keyframes cloud-drift {
   from {
-    rotate: -4deg;
-    translate: 0 -51%;
+    transform: translate(-14px, 4px);
   }
   to {
-    rotate: 3deg;
-    translate: 0 -49%;
+    transform: translate(16px, -8px);
   }
 }
 
@@ -493,6 +550,8 @@ a {
   z-index: 3;
   top: calc(clamp(1rem, 5vh, 3rem) + 5.4rem);
   left: clamp(4.5rem, 9vw, 9rem);
+  display: flex;
+  gap: 0.4rem;
 }
 
 .menu-sound .chip-btn {
@@ -737,13 +796,13 @@ a {
   background: rgba(2, 8, 35, 0.6);
 }
 
-.bar::after {
-  content: '';
+/* the fill is animated by Motion: a CSS keyframe fill here was left unpainted by Chromium */
+.bar > b {
   position: absolute;
   inset: 0;
+  display: block;
   background: currentColor;
   transform-origin: left;
-  animation: bar-fill 0.9s 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .bar-hp {
@@ -753,12 +812,6 @@ a {
 .bar-sp {
   width: 82%;
   color: #ffe14a;
-}
-
-@keyframes bar-fill {
-  from {
-    transform: scaleX(0);
-  }
 }
 
 @keyframes card-float {
@@ -909,7 +962,9 @@ kbd.round {
   gap: 1rem;
 }
 
-.menu-foot > .chip-btn {
+.menu-foot > .toggles {
+  display: flex;
+  gap: 0.5rem;
   margin-left: auto;
 }
 
@@ -1352,10 +1407,12 @@ kbd {
     display: none;
   }
 
-  .art-moon {
-    left: -18vw;
-    top: 42%;
-    height: 62vw;
+  /* the clouds live in y 250–885 of their box; stretch it so they fill the band */
+  .art-clouds {
+    top: -22%;
+    left: -2vw;
+    height: 125%;
+    width: auto;
   }
 
   .player-box {
@@ -1444,15 +1501,11 @@ kbd {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .blink,
-  .scene,
-  .art-moon,
-  .shard,
-  .menu-list li,
-  .card-link,
-  .hl-red,
-  .menu-item.is-active {
-    animation: none;
-  }
+/* Motion off (follows the system's reduced-motion setting until the visitor picks): still scene */
+:root[data-motion='off'] :is(.blink, .scene, .cloud, .shard, .menu-list li, .card-link, .hl-red, .menu-item.is-active) {
+  animation: none;
+}
+
+:root[data-motion='off'] .bubbles {
+  display: none;
 }

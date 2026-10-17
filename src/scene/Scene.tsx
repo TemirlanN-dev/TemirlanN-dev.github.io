@@ -4,7 +4,8 @@ import { Canvas } from '@react-three/fiber'
 import { PerformanceMonitor, Sparkles } from '@react-three/drei'
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
 import type { Phase } from '../types'
-import { isCoarsePointer, isLowPower, prefersReducedMotion } from '../lib/env'
+import { isCoarsePointer, isLowPower } from '../lib/env'
+import { useMotion } from '../lib/motion'
 import Cabinet from './Cabinet'
 import CameraRig from './CameraRig'
 import Room from './Room'
@@ -44,7 +45,7 @@ function Lights() {
 export default function Scene({ phase, onStart, onZoomInDone, onZoomOutDone, onToast, onReady }: SceneProps) {
   // start light on phones; anywhere else, drop to light mode if the frame rate sags
   const [lowPower, setLowPower] = useState(isLowPower)
-  const parallax = useMemo(() => !isCoarsePointer() && !prefersReducedMotion(), [])
+  const parallax = useMotion() && !isCoarsePointer()
   const mainScreen = useMemo(createMainScreen, [])
   const paddleScreen = useMemo(createPaddleScreen, [])
   const brokenScreen = useMemo(createOutOfOrderScreen, [])

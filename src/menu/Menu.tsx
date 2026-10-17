@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { MENU, type SectionId } from '../data/content'
-import { isCoarsePointer, prefersReducedMotion } from '../lib/env'
+import { isCoarsePointer } from '../lib/env'
+import { useMotion } from '../lib/motion'
 import { sfx } from '../lib/sound'
+import MotionToggle from '../MotionToggle'
 import SoundToggle from '../SoundToggle'
 import Hud from './Hud'
 import MainMenu from './MainMenu'
@@ -20,10 +22,13 @@ const isUp = (key: string) => key === 'ArrowUp' || key === 'w' || key === 'W'
 const isDown = (key: string) => key === 'ArrowDown' || key === 's' || key === 'S'
 
 /** Feeds the pointer position to CSS (--px/--py, -1..1) so layers can drift at different depths. */
-function useParallax(ref: RefObject<HTMLElement | null>) {
+function useParallax(ref: RefObject<HTMLElement | null>, enabled: boolean) {
   useEffect(() => {
     const el = ref.current
-    if (!el || isCoarsePointer() || prefersReducedMotion()) return
+    if (!el) return
+    el.style.setProperty('--px', '0')
+    el.style.setProperty('--py', '0')
+    if (!enabled || isCoarsePointer()) return
     let raf = 0
     const onMove = (e: PointerEvent) => {
       cancelAnimationFrame(raf)
@@ -37,7 +42,7 @@ function useParallax(ref: RefObject<HTMLElement | null>) {
       cancelAnimationFrame(raf)
       window.removeEventListener('pointermove', onMove)
     }
-  }, [ref])
+  }, [ref, enabled])
 }
 
 export default function Menu({ section, onSection, onExit }: MenuProps) {
@@ -45,7 +50,7 @@ export default function Menu({ section, onSection, onExit }: MenuProps) {
   const [index, setIndex] = useState(() => Math.max(0, items.findIndex((m) => m.id === section)))
   const [wipes, setWipes] = useState(0)
   const root = useRef<HTMLDivElement>(null)
-  useParallax(root)
+  useParallax(root, useMotion())
 
   const open = (i: number) => {
     const item = items[i]
@@ -139,7 +144,10 @@ export default function Menu({ section, onSection, onExit }: MenuProps) {
               <kbd>Esc</kbd>Back
             </span>
           </div>
-          <SoundToggle />
+          <div className="toggles">
+            <MotionToggle />
+            <SoundToggle />
+          </div>
         </footer>
       )}
     </motion.div>

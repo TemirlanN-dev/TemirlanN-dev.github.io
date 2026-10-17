@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { PROFILE } from './data/content'
 import { isCoarsePointer } from './lib/env'
+import MotionToggle from './MotionToggle'
 import SoundToggle from './SoundToggle'
 
 type Props = { ready: boolean; toast: string | null; onSkip: () => void }
@@ -16,6 +17,7 @@ export default function RoomHud({ ready, toast, onSkip }: Props) {
       </div>
 
       <div className="room-actions">
+        <MotionToggle />
         <SoundToggle />
         <button className="chip-btn" onClick={onSkip}>
           Skip intro <span aria-hidden="true">›</span>

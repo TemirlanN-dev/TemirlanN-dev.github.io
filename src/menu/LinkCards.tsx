@@ -59,8 +59,11 @@ export default function LinkCards() {
           <span className="card-icon">{link.icon}</span>
           <span className="card-label">{link.label}</span>
           <span className="card-bars" aria-hidden="true">
-            <i className="bar bar-hp" />
-            <i className="bar bar-sp" />
+            {['bar-hp', 'bar-sp'].map((kind, b) => (
+              <i key={kind} className={`bar ${kind}`}>
+                <motion.b initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.6 + i * 0.08 + b * 0.1, duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }} />
+              </i>
+            ))}
           </span>
         </motion.a>
       ))}

@@ -2,9 +2,10 @@ import { useEffect, useRef, type CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { PROFILE, type MenuItem } from '../data/content'
 import { isCoarsePointer } from '../lib/env'
+import MotionToggle from '../MotionToggle'
 import SoundToggle from '../SoundToggle'
 import LinkCards from './LinkCards'
-import MoonArt from './MoonArt'
+import CloudArt from './CloudArt'
 
 // Hand-set placement for each row of the stacked list, like the game's menu:
 // x = indent (in menu-font ems), size = font scale, tint = which shade of pale blue.
@@ -51,7 +52,7 @@ export default function MainMenu({ items, index, canExit, onSelect, onFocusItem,
   return (
     <motion.div className="main-menu" exit={{ opacity: 0, transition: { duration: 0.18, delay: 0.12 } }}>
       <div className="layer" style={{ '--depth': -14 } as CSSProperties}>
-        <MoonArt />
+        <CloudArt />
       </div>
 
       <motion.div
@@ -140,6 +141,7 @@ export default function MainMenu({ items, index, canExit, onSelect, onFocusItem,
       </motion.div>
 
       <div className="menu-sound">
+        <MotionToggle />
         <SoundToggle />
       </div>
     </motion.div>

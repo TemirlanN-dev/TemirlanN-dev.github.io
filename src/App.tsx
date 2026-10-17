@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, MotionConfig } from 'motion/react'
 import { SECTION_IDS, type SectionId } from './data/content'
 import { hasWebGL } from './lib/env'
+import { useMotion } from './lib/motion'
 import { sfx } from './lib/sound'
 import type { Phase } from './types'
 import Loading from './Loading'
@@ -29,6 +30,7 @@ export default function App() {
   const [sceneReady, setSceneReady] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const motion = useMotion()
 
   useEffect(() => {
     const hash = phase === 'menu' ? `#${section ?? 'menu'}` : ''
@@ -73,7 +75,7 @@ export default function App() {
   })
 
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion={motion ? 'never' : 'always'}>
       {hasWebGL && sceneWanted && (
         <Suspense fallback={<Loading />}>
           <Scene
