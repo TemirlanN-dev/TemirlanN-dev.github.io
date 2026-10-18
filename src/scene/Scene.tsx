@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Canvas } from '@react-three/fiber'
-import { Sparkles } from '@react-three/drei'
+import { PerformanceMonitor, Sparkles } from '@react-three/drei'
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
 import type { Phase } from '../types'
 import { isCoarsePointer, isLowPower, prefersReducedMotion } from '../lib/env'
@@ -42,7 +42,8 @@ function Lights() {
 }
 
 export default function Scene({ phase, onStart, onZoomInDone, onZoomOutDone, onToast, onReady }: SceneProps) {
-  const lowPower = useMemo(isLowPower, [])
+  // start light on phones; anywhere else, drop to light mode if the frame rate sags
+  const [lowPower, setLowPower] = useState(isLowPower)
   const parallax = useMemo(() => !isCoarsePointer() && !prefersReducedMotion(), [])
   const mainScreen = useMemo(createMainScreen, [])
   const paddleScreen = useMemo(createPaddleScreen, [])
@@ -58,12 +59,13 @@ export default function Scene({ phase, onStart, onZoomInDone, onZoomOutDone, onT
   return (
     <div className="scene">
       <Canvas
-        dpr={lowPower ? [1, 1.25] : [1, 1.75]}
+        dpr={lowPower ? 1 : [1, 1.5]}
         frameloop={phase === 'menu' ? 'never' : 'always'}
         camera={{ fov: 45, near: 0.05, far: 40, position: [0, 2, 6] }}
         gl={{ antialias: false, powerPreference: 'high-performance' }}
         onCreated={onReady}
       >
+        <PerformanceMonitor bounds={() => [40, 1000]} onDecline={() => setLowPower(true)} />
         <color attach="background" args={[BACKGROUND]} />
         <fog attach="fog" args={[BACKGROUND, 6, 14]} />
         <Lights />

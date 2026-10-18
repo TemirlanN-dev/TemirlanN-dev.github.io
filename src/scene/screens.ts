@@ -182,7 +182,7 @@ export function createMainScreen() {
   return {
     width: W,
     height: H,
-    fps: 30,
+    fps: 24,
     draw(c: CanvasRenderingContext2D, t: number) {
       now = t
       if (mode === 'boot') drawBoot(c, t - bootAt)
