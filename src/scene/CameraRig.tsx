@@ -31,8 +31,12 @@ export default function CameraRig({ phase, parallax, onZoomInDone, onZoomOutDone
   const look = useRef(new THREE.Vector2())
   const v = useMemo(() => ({ rest: new THREE.Vector3(), zoom: new THREE.Vector3(), target: new THREE.Vector3() }), [])
 
-  // "Skip intro" jumps straight to the menu, so leaving it should start from the screen
   useEffect(() => {
+    // each dive and each return is announced once. Clear the record on every phase change:
+    // "Skip intro" goes room → menu without a dive, so a stale 'zoomOut' from the previous
+    // return would otherwise swallow the next one and leave the site stuck mid-transition
+    reported.current = null
+    // "Skip intro" jumps straight to the menu, so leaving it should start from the screen
     if (phase === 'menu') progress.current = 1
   }, [phase])
 
