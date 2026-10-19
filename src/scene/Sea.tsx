@@ -6,15 +6,16 @@ import type { Daylight } from './daylight'
 import { SEA } from './layout'
 
 // The sea outside the window: a real surface whose vertices are moved by layered Gerstner
-// waves, so the water rises into crests and falls into troughs. The wave trains travel
-// sideways and diagonally (never toward the viewer), and it is cel-shaded like the room:
+// waves, so the water rises into crests and falls into troughs. One long swell dominates;
+// wave heights come and go in drifting sets and the crests are bent, so no two waves match.
+// Everything travels sideways (never toward the viewer), and it is cel-shaded like the room:
 // flat tones by how each face meets the sun or moon, foam on the crests, glints in the
 // light's path, fading into haze at the horizon.
 
 /** Rows get further apart with distance, so detail is spent where the eye can see it. */
 function buildSurface() {
-  const cols = 180
-  const rows = 160
+  const cols = 140
+  const rows = 120
   const positions = new Float32Array((cols + 1) * (rows + 1) * 3)
   const ratio = SEA.far / SEA.near
   let k = 0
@@ -53,42 +54,78 @@ varying float vHeight;
 
 #define PI 3.14159265
 
-// xy: direction of travel (all have +x, so the sea flows left to right), z: steepness, w: wavelength in metres
-const vec4 SWELL = vec4(1.0, -0.35, 0.2, 22.0);
-const vec4 CROSS = vec4(1.0, 0.55, 0.18, 13.0);
-const vec4 CHOP = vec4(0.8, -0.9, 0.16, 8.0);
-const vec4 RIPPLE = vec4(1.0, 0.2, 0.14, 4.6);
+float hash(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
 
-vec3 gerstner(vec4 wave, vec2 p, float fade, inout vec3 tangent, inout vec3 binormal) {
-  float k = 2.0 * PI / wave.w;
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+// One Gerstner wave. xy: direction of travel, z: steepness, w: wavelength in metres.
+vec3 wave(vec4 w, vec2 p, float scale) {
+  float k = 2.0 * PI / w.w;
   float speed = sqrt(9.8 / k) * 0.42; // deep-water speed, slowed for a lazy afternoon
-  vec2 d = normalize(wave.xy);
-  float s = wave.z * fade;
+  vec2 d = normalize(w.xy);
+  float a = w.z * scale / k;
   float f = k * (dot(d, p) - speed * uTime);
-  float a = s / k;
-  float sf = sin(f);
-  float cf = cos(f);
-  tangent += vec3(-d.x * d.x * s * sf, d.x * s * cf, -d.x * d.y * s * sf);
-  binormal += vec3(-d.x * d.y * s * sf, d.y * s * cf, -d.y * d.y * s * sf);
-  return vec3(d.x * a * cf, a * sf, d.y * a * cf);
+  return vec3(d.x * a * cos(f), a * sin(f), d.y * a * cos(f));
+}
+
+// Real seas come in sets: patches of tall waves between calmer water. A slow noise field
+// scales each wave's height (0.22 to 1) and drifts left to right at about half the wave
+// speed, the way wave groups travel.
+float groups(vec2 p, vec2 seed, float groupSpeed) {
+  vec2 q = p - vec2(uTime * groupSpeed, 0.0);
+  float n = noise(q * 0.018 + seed) * 0.65 + noise(q * 0.047 + seed * 1.7) * 0.35;
+  return mix(0.22, 1.0, smoothstep(0.3, 0.7, n));
+}
+
+// The slowly varying parts of the sea at a spot: how much each wave is in a set, and how far
+// the crest lines are bent there. Computed once per vertex and shared by its slope samples.
+struct Swell { vec4 amp; float ripple; vec2 bend; };
+
+Swell swellAt(vec2 p, float dist) {
+  Swell s;
+  s.amp = vec4(
+    groups(p, vec2(0.0), 1.4) * (1.0 - smoothstep(200.0, 400.0, dist)),
+    groups(p, vec2(5.3, 1.1), 1.1) * (1.0 - smoothstep(140.0, 300.0, dist)),
+    groups(p, vec2(2.2, 7.4), 0.9) * (1.0 - smoothstep(80.0, 180.0, dist)),
+    groups(p, vec2(9.1, 3.3), 0.6) * (1.0 - smoothstep(40.0, 100.0, dist)));
+  s.ripple = 1.0 - smoothstep(25.0, 60.0, dist);
+  s.bend = (vec2(noise(p * 0.021 + 3.1), noise(p * 0.021 + 8.7)) - 0.5) * 10.0;
+  return s;
+}
+
+// Height and sideways shift of the water at p. All waves travel left to right (+x).
+vec3 surface(vec2 p, Swell s) {
+  vec2 q = p + s.bend; // bent crest lines: no two are straight or parallel
+  vec3 o = wave(vec4(1.0, -0.22, 0.24, 31.0), q, s.amp.x);
+  o += wave(vec4(1.0, 0.42, 0.16, 18.7), q, s.amp.y);
+  o += wave(vec4(0.75, -0.66, 0.1, 10.9), q, s.amp.z);
+  o += wave(vec4(1.0, 0.12, 0.06, 5.9), q, s.amp.w);
+  o += wave(vec4(0.6, 0.8, 0.04, 3.4), q, s.ripple);
+  return o;
 }
 
 void main() {
-  vec3 world = (modelMatrix * vec4(position, 1.0)).xyz;
-  float dist = length(world.xz - cameraPosition.xz);
-  vec2 p = world.xz;
-  vec3 tangent = vec3(1.0, 0.0, 0.0);
-  vec3 binormal = vec3(0.0, 0.0, 1.0);
-  // shorter waves fade out with distance, before the rows get too far apart to draw them
-  vec3 offset = gerstner(SWELL, p, 1.0 - smoothstep(180.0, 380.0, dist), tangent, binormal);
-  offset += gerstner(CROSS, p, 1.0 - smoothstep(110.0, 260.0, dist), tangent, binormal);
-  offset += gerstner(CHOP, p, 1.0 - smoothstep(70.0, 160.0, dist), tangent, binormal);
-  offset += gerstner(RIPPLE, p, 1.0 - smoothstep(35.0, 90.0, dist), tangent, binormal);
-  world += offset;
-  vHeight = offset.y;
-  vNormal = normalize(cross(binormal, tangent));
-  vWorld = world;
-  gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
+  vec3 base = (modelMatrix * vec4(position, 1.0)).xyz;
+  float dist = length(base.xz - cameraPosition.xz);
+  Swell s = swellAt(base.xz, dist);
+  vec3 P = base + surface(base.xz, s);
+  // the wave heights vary across the water, so measure the real slope for the normal
+  float e = 0.35 + dist * 0.004;
+  vec3 Px = base + vec3(e, 0.0, 0.0) + surface(base.xz + vec2(e, 0.0), s);
+  vec3 Pz = base + vec3(0.0, 0.0, e) + surface(base.xz + vec2(0.0, e), s);
+  vNormal = normalize(cross(Pz - P, Px - P));
+  vHeight = P.y - base.y;
+  vWorld = P;
+  gl_Position = projectionMatrix * viewMatrix * vec4(P, 1.0);
 }
 `
 
@@ -120,10 +157,12 @@ void main() {
   vec3 V = normalize(cameraPosition - vWorld);
   float dist = length(vWorld.xz - cameraPosition.xz);
 
-  // cel shading: three flat tones by how far each wave face turns toward the light
+  // cel shading: three flat tones by how far each face tilts toward or away from the light,
+  // measured against flat water so gentle slopes still read; troughs a step darker
   vec3 shadeDir = normalize(vec3(uLightDir.x, max(uLightDir.y, 0.2), uLightDir.z));
-  float ndl = dot(N, shadeDir);
-  float tone = ndl > 0.32 ? 1.18 : (ndl > 0.12 ? 0.94 : 0.7);
+  float tilt = dot(N, shadeDir) - shadeDir.y;
+  float tone = tilt > 0.05 ? 1.18 : (tilt > -0.05 ? 0.95 : 0.72);
+  tone *= vHeight < -0.25 ? 0.88 : 1.0;
   vec3 col = mix(uSeaNear, uSeaFar, smoothstep(15.0, 260.0, dist) * 0.7) * tone;
 
   // faces seen edge-on reflect the bright sky near the horizon
@@ -132,14 +171,14 @@ void main() {
 
   // foam on the crests, broken up and drifting with the water
   float breakup = noise(vWorld.xz * 0.9 + vec2(uTime * 0.5, 0.0));
-  float foam = step(0.78 + 0.35 * breakup, vHeight) * step(0.35, fract(breakup * 5.0)) * (1.0 - smoothstep(50.0, 160.0, dist));
+  float foam = step(0.6 + 0.3 * breakup, vHeight) * step(0.35, fract(breakup * 5.0)) * (1.0 - smoothstep(50.0, 160.0, dist));
   col = mix(col, mix(uGlitter, vec3(1.0), 0.4), foam * 0.8);
 
   // hard-edged glints where a wave tilts the sun or moon straight at the eye
   vec3 R = reflect(-uLightDir, N);
   float facing = dot(R, V);
   float sparkle = noise(vWorld.xz * 2.2 + vec2(uTime * 1.4, uTime * 0.3));
-  float glint = step(0.993 - 0.012 * sparkle, facing) * step(0.55, sparkle);
+  float glint = step(0.995 - 0.01 * sparkle, facing) * step(0.64, sparkle);
   col += uGlitter * (glint * 1.4 + pow(max(facing, 0.0), 200.0) * 0.12) * uLightUp;
 
   // haze toward the horizon, reaching the sky's horizon colour at the far edge
