@@ -12,6 +12,7 @@ import Desk from './Desk'
 import { useDaylight, type Daylight } from './daylight'
 import { createLockScreen } from './lockScreen'
 import Room from './Room'
+import Sea from './Sea'
 import WindowView from './WindowView'
 
 export type SceneProps = {
@@ -85,7 +86,7 @@ export default function Scene({ phase, onStart, onZoomInDone, onZoomOutDone, onT
         shadows="percentage"
         dpr={lowPower ? 1 : [1, 1.5]}
         frameloop={phase === 'menu' ? 'never' : 'always'}
-        camera={{ fov: 50, near: 0.05, far: 60, position: [0.4, 1.9, 4.6] }}
+        camera={{ fov: 50, near: 0.05, far: 900, position: [0.4, 1.9, 4.6] }}
         gl={{ antialias: false, powerPreference: 'high-performance' }}
         onCreated={onReady}
       >
@@ -93,6 +94,7 @@ export default function Scene({ phase, onStart, onZoomInDone, onZoomOutDone, onT
         <color attach="background" args={['#cfe6ff']} />
         <Lights lowPower={lowPower} daylight={daylight} />
         <WindowView daylight={daylight} />
+        <Sea daylight={daylight} />
         <Room interactive={interactive} />
         <Desk screen={screen} interactive={interactive} onStart={onStart} onScreenHover={setHovered} lampOn={daylight.lampOn} screenGlow={daylight.screenGlow} />
         <Corner interactive={interactive} onToast={onToast} />

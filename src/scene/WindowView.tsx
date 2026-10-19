@@ -3,15 +3,18 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useMotion } from '../lib/motion'
 import type { Daylight } from './daylight'
+import { SEA } from './layout'
 
-// The view out of the window: the sea, painted by a shader on a big backdrop far outside, so
-// it shifts with the camera like real distance. Anime-style cel-shaded clouds, hazy islands,
-// rolling swells and a little sailboat; sky, sun or moon, and colours follow the time of day.
+// The sky out of the window, painted by a shader on a big backdrop: anime-style cel-shaded
+// clouds, hazy islands, stars, and the sun or moon, all following the time of day. The sea
+// itself is real geometry (Sea.tsx); below the horizon this only paints haze behind it.
+//
+// The backdrop travels with the camera, so like a real sky it never shifts as you move, and
+// its horizon is lowered to sit exactly on the far edge of the sea.
 
-const WIDTH = 24
-const HEIGHT = 12
-const DISTANCE = 12 // metres behind the back wall
-const EYE_LEVEL = 1.45 // the horizon sits at the camera's height, as it does in real life
+const WIDTH = 44
+const HEIGHT = 26
+const DISTANCE = 16 // metres in front of the camera
 
 const vertexShader = /* glsl */ `
 varying vec2 vUv;
@@ -23,7 +26,7 @@ void main() {
 
 const fragmentShader = /* glsl */ `
 uniform float uTime;
-uniform vec3 uSkyTop, uSkyHorizon, uBodyColor, uCloudLit, uCloudShade, uSeaNear, uSeaFar, uGlitter, uHaze, uIsland;
+uniform vec3 uSkyTop, uSkyHorizon, uBodyColor, uCloudLit, uCloudShade, uSeaFar, uHaze, uIsland;
 uniform vec2 uBody;
 uniform float uBodySize, uMoon, uStars;
 varying vec2 vUv;
@@ -60,7 +63,7 @@ float cloudField(vec2 q) {
 }
 
 void main() {
-  // metres on the backdrop; it is centred at eye level, so the horizon is y = 0
+  // metres on the backdrop, centred on the horizon
   vec2 q = (vUv - 0.5) * vec2(${WIDTH.toFixed(1)}, ${HEIGHT.toFixed(1)});
   vec3 col;
 
@@ -95,38 +98,9 @@ void main() {
     cloud = mix(cloud, mix(uCloudShade, uCloudLit, 0.4), smoothstep(1.0, 0.25, q.y) * 0.5);
     col = mix(col, cloud, body);
 
-    // a sailboat working its way along the horizon
-    float bx = mod(uTime * 0.12, 16.0) - 8.0;
-    vec2 b = q - vec2(bx, 0.0);
-    float sail = step(0.0, b.y) * step(b.y, 0.32) * step(abs(b.x - 0.02), 0.12 * (1.0 - b.y / 0.32));
-    float hull = step(abs(b.x), 0.16) * step(-0.05, b.y) * step(b.y, 0.02);
-    col = mix(col, mix(uCloudLit, vec3(1.0), 0.5), sail);
-    col = mix(col, uIsland * 0.6, hull);
   } else {
-    // sea: rows closer to the horizon are further away, so detail compresses toward it
-    float depth = -q.y;
-    float z = 1.0 / (depth + 0.06);
-    vec2 w = vec2(q.x * z * 0.6, z * 1.2);
-    col = mix(uSeaFar, uSeaNear, smoothstep(0.0, 2.2, depth));
-
-    // swells rolling in toward the shore: lighter crests, darker troughs
-    float roll = uTime;
-    float swell = 0.6 * sin(w.y * 2.2 - roll * 1.5 + noise(w * 0.8 + roll * 0.08) * 4.0)
-                + 0.4 * sin(w.y * 3.7 + w.x * 0.6 - roll * 2.0 + noise(w * 1.3 - roll * 0.12) * 3.0);
-    col *= 0.88 + 0.16 * swell;
-    col = mix(col, uGlitter, smoothstep(0.8, 0.97, swell) * 0.28);
-
-    // whitecaps drifting with the swell
-    float caps = noise(vec2(w.x * 3.0 + roll * 0.25, w.y * 2.0 - roll * 1.3));
-    col = mix(col, mix(uGlitter, vec3(1.0), 0.5), smoothstep(0.8, 0.85, caps) * smoothstep(0.3, 1.4, depth) * 0.55);
-
-    // glitter, strongest in the path of the sun or moon
-    float column = exp(-pow((q.x - uBody.x) * 0.55, 2.0)) * step(-0.2, uBody.y);
-    float glitter = max(noise(vec2(w.x * 7.0, w.y * 5.0 - uTime * 1.6)), noise(vec2(w.x * 9.0 + 3.0, w.y * 6.0 + uTime * 1.2)));
-    col += uGlitter * smoothstep(0.86 - column * 0.2, 0.92 - column * 0.2, glitter) * (0.45 + column);
-
-    // haze where sea meets sky
-    col = mix(col, uHaze, exp(-depth * 9.0) * 0.7);
+    // behind the real sea: haze at the horizon deepening to far-sea blue
+    col = mix(uHaze, uSeaFar, smoothstep(0.0, 1.5, -q.y));
   }
 
   // authored in sRGB; the renderer works in linear light
@@ -134,7 +108,7 @@ void main() {
 }
 `
 
-const COLOR_UNIFORMS = ['SkyTop', 'SkyHorizon', 'BodyColor', 'CloudLit', 'CloudShade', 'SeaNear', 'SeaFar', 'Glitter', 'Haze', 'Island'] as const
+const COLOR_UNIFORMS = ['SkyTop', 'SkyHorizon', 'BodyColor', 'CloudLit', 'CloudShade', 'SeaFar', 'Haze', 'Island'] as const
 
 export default function WindowView({ daylight }: { daylight: Daylight }) {
   const motion = useMotion()
@@ -164,9 +138,7 @@ export default function WindowView({ daylight }: { daylight: Daylight }) {
       BodyColor: s.bodyColor,
       CloudLit: s.cloudLit,
       CloudShade: s.cloudShade,
-      SeaNear: s.seaNear,
       SeaFar: s.seaFar,
-      Glitter: s.glitter,
       Haze: s.haze,
       Island: s.island,
     }
@@ -177,14 +149,20 @@ export default function WindowView({ daylight }: { daylight: Daylight }) {
     uniforms.uStars.value = s.stars
   }, [daylight])
 
-  useFrame((_, delta) => {
+  const backdrop = useRef<THREE.Mesh>(null)
+  useFrame(({ camera }, delta) => {
     if (motion && material.current) material.current.uniforms.uTime.value += Math.min(delta, 0.1)
+    if (!backdrop.current) return
+    // the sea's far edge sits a hair below eye level; drop the painted horizon to meet it
+    const dip = (camera.position.y - SEA.level) / (camera.position.z - SEA.far)
+    backdrop.current.position.set(camera.position.x, camera.position.y - dip * DISTANCE, camera.position.z - DISTANCE)
   })
 
+  // drawn first and never writes depth, so the sea and the room always draw over it
   return (
-    <mesh position={[0, EYE_LEVEL, -1.2 - DISTANCE]}>
+    <mesh ref={backdrop} renderOrder={-1}>
       <planeGeometry args={[WIDTH, HEIGHT]} />
-      <shaderMaterial ref={material} vertexShader={vertexShader} fragmentShader={fragmentShader} uniforms={initialUniforms} toneMapped={false} />
+      <shaderMaterial ref={material} vertexShader={vertexShader} fragmentShader={fragmentShader} uniforms={initialUniforms} toneMapped={false} depthWrite={false} />
     </mesh>
   )
 }
