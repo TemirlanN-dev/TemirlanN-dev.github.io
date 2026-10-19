@@ -14,7 +14,7 @@ import WaterBackground from './WaterBackground'
 type MenuProps = {
   section: SectionId | null
   onSection: (section: SectionId | null) => void
-  /** missing when there is no arcade to go back to (no WebGL) */
+  /** missing when there is no room to go back to (no WebGL) */
   onExit?: () => void
 }
 

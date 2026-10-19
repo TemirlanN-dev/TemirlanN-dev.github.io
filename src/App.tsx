@@ -9,7 +9,7 @@ import Loading from './Loading'
 import Menu from './menu/Menu'
 import RoomHud from './RoomHud'
 
-// three.js only downloads if the arcade is actually shown
+// three.js only downloads if the room is actually shown
 const Scene = lazy(() => import('./scene/Scene'))
 
 /** `#menu` or `#projects` etc. open the menu directly, so sections can be linked to. */
@@ -48,7 +48,7 @@ export default function App() {
     setPhase('menu')
   }
 
-  const exitToArcade = () => {
+  const exitToRoom = () => {
     sfx.back()
     setSection(null)
     setSceneWanted(true)
@@ -61,7 +61,7 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToast(null), 2400)
   }
 
-  // Enter or Space at the cabinet = press start
+  // Enter or Space in the room = log in at the monitor
   useEffect(() => {
     if (phase !== 'room') return
     const onKey = (e: KeyboardEvent) => {
@@ -92,7 +92,7 @@ export default function App() {
       <AnimatePresence>{phase === 'room' && <RoomHud key="room" ready={sceneReady} toast={toast} onSkip={skip} />}</AnimatePresence>
 
       <AnimatePresence>
-        {phase === 'menu' && <Menu key="menu" section={section} onSection={setSection} onExit={hasWebGL ? exitToArcade : undefined} />}
+        {phase === 'menu' && <Menu key="menu" section={section} onSection={setSection} onExit={hasWebGL ? exitToRoom : undefined} />}
       </AnimatePresence>
     </MotionConfig>
   )

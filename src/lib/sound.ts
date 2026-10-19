@@ -59,6 +59,21 @@ export const sfx = {
     tone(988, 0, 0.08)
     tone(1319, 0.08, 0.45)
   },
+  /** glass wind chime: two bright partials with a long ring */
+  chime() {
+    if (!enabled) return
+    tone(2093, 0, 1.6, { type: 'sine', volume: 0.06 })
+    tone(3136, 0.01, 1.1, { type: 'sine', volume: 0.025 })
+    tone(2637, 0.35, 1.2, { type: 'sine', volume: 0.035 })
+  },
+  meow() {
+    if (!enabled) return
+    tone(520, 0, 0.14, { type: 'triangle', volume: 0.06, slideTo: 820 })
+    tone(820, 0.14, 0.3, { type: 'triangle', volume: 0.05, slideTo: 430 })
+  },
+  click() {
+    if (enabled) tone(1800, 0, 0.025, { volume: 0.03 })
+  },
 }
 
 export function setSound(on: boolean) {

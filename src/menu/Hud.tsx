@@ -1,19 +1,7 @@
 import { useEffect, useState } from 'react'
+import { timeOfDay } from '../lib/timeOfDay'
 
 // Date, time of day and the real moon phase, in the corner like a calendar HUD.
-
-const TIMES_OF_DAY: [endHour: number, label: string][] = [
-  [1, 'Dark Hour'],
-  [5, 'Late Night'],
-  [8, 'Early Morning'],
-  [11, 'Morning'],
-  [13, 'Lunchtime'],
-  [16, 'Afternoon'],
-  [18, 'After School'],
-  [24, 'Evening'],
-]
-
-const timeOfDay = (hour: number) => TIMES_OF_DAY.find(([end]) => hour < end)![1]
 
 const SYNODIC_MONTH = 29.530588853
 const KNOWN_NEW_MOON = Date.UTC(2000, 0, 6, 18, 14)

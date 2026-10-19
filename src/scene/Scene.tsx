@@ -6,10 +6,12 @@ import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
 import type { Phase } from '../types'
 import { isCoarsePointer, isLowPower } from '../lib/env'
 import { useMotion } from '../lib/motion'
-import Cabinet from './Cabinet'
 import CameraRig from './CameraRig'
+import Corner from './Corner'
+import Desk from './Desk'
+import { createLockScreen } from './lockScreen'
 import Room from './Room'
-import { createMainScreen, createOutOfOrderScreen, createPaddleScreen } from './screens'
+import WindowView from './WindowView'
 
 export type SceneProps = {
   phase: Phase
@@ -20,24 +22,40 @@ export type SceneProps = {
   onReady: () => void
 }
 
-const BACKGROUND = '#05040b'
-
-function Lights() {
-  const spot = useRef<THREE.SpotLight>(null)
+/** Afternoon sun pouring in through the window, plus soft sky light filling the room. */
+function Lights({ lowPower }: { lowPower: boolean }) {
+  const sun = useRef<THREE.DirectionalLight>(null)
   const target = useRef<THREE.Object3D>(null)
   useEffect(() => {
-    if (spot.current && target.current) spot.current.target = target.current
+    if (sun.current && target.current) sun.current.target = target.current
   }, [])
+  const map = lowPower ? 1024 : 2048
 
   return (
     <>
-      <ambientLight intensity={0.35} color="#8a8cff" />
-      <spotLight ref={spot} position={[0, 4.5, 2.2]} angle={0.45} penumbra={0.85} intensity={40} distance={12} decay={2} color="#c4d2ff" />
-      <object3D ref={target} position={[0, 1.1, 0]} />
-      <pointLight position={[-2.6, 2.4, 0.6]} color="#ff3d9a" intensity={14} distance={8} decay={2} />
-      <pointLight position={[2.6, 2.4, 0.6]} color="#3dd8ff" intensity={14} distance={8} decay={2} />
-      {/* the main screen's glow spilling onto the controls */}
-      <pointLight position={[0, 1.4, 0.75]} color="#3f7dff" intensity={2.5} distance={2.5} decay={2} />
+      <hemisphereLight args={['#d6ecff', '#c99f70', 1.1]} />
+      <ambientLight intensity={0.25} color="#fff1e0" />
+      {/* warm fill from the open side of the room, so walls facing us aren't left in shade */}
+      <directionalLight position={[1.5, 3, 5]} intensity={1.4} color="#fff0dc" />
+      {/* afternoon sun high on the right: the window and its lattice land as a bright patch
+          on the floor left of the desk and up the left wall, where the camera can see it */}
+      <directionalLight
+        ref={sun}
+        position={[6, 7, -4]}
+        intensity={3.2}
+        color="#fff2dc"
+        castShadow
+        shadow-mapSize={[map, map]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.03}
+        shadow-camera-left={-4}
+        shadow-camera-right={4}
+        shadow-camera-top={4}
+        shadow-camera-bottom={-4}
+        shadow-camera-near={1}
+        shadow-camera-far={20}
+      />
+      <object3D ref={target} position={[-0.6, 0.3, -0.3]} />
     </>
   )
 }
@@ -45,70 +63,41 @@ function Lights() {
 export default function Scene({ phase, onStart, onZoomInDone, onZoomOutDone, onToast, onReady }: SceneProps) {
   // start light on phones; anywhere else, drop to light mode if the frame rate sags
   const [lowPower, setLowPower] = useState(isLowPower)
-  const parallax = useMotion() && !isCoarsePointer()
-  const mainScreen = useMemo(createMainScreen, [])
-  const paddleScreen = useMemo(createPaddleScreen, [])
-  const brokenScreen = useMemo(createOutOfOrderScreen, [])
+  const motion = useMotion()
+  const parallax = motion && !isCoarsePointer()
+  const screen = useMemo(createLockScreen, [])
   const [hovered, setHovered] = useState(false)
   const interactive = phase === 'room'
 
   useEffect(() => {
-    if (phase === 'zoomIn' || phase === 'menu') mainScreen.setMode('boot')
-    else mainScreen.setMode(hovered && interactive ? 'hover' : 'attract')
-  }, [phase, hovered, interactive, mainScreen])
+    if (phase === 'zoomIn' || phase === 'menu') screen.setMode('boot')
+    else screen.setMode(hovered && interactive ? 'hover' : 'locked')
+  }, [phase, hovered, interactive, screen])
 
   return (
     <div className="scene">
       <Canvas
+        shadows="percentage"
         dpr={lowPower ? 1 : [1, 1.5]}
         frameloop={phase === 'menu' ? 'never' : 'always'}
-        camera={{ fov: 45, near: 0.05, far: 40, position: [0, 2, 6] }}
+        camera={{ fov: 50, near: 0.05, far: 60, position: [0.4, 1.9, 4.6] }}
         gl={{ antialias: false, powerPreference: 'high-performance' }}
         onCreated={onReady}
       >
         <PerformanceMonitor bounds={() => [40, 1000]} onDecline={() => setLowPower(true)} />
-        <color attach="background" args={[BACKGROUND]} />
-        <fog attach="fog" args={[BACKGROUND, 6, 14]} />
-        <Lights />
-        <Room lowPower={lowPower} />
-
-        <Cabinet
-          screen={mainScreen}
-          marquee="TEMIRLAN"
-          accent="#4de1ff"
-          sideColor="#17124a"
-          featured
-          interactive={interactive}
-          onActivate={onStart}
-          onHover={setHovered}
-        />
-        <Cabinet
-          position={[-1.45, 0, 0.1]}
-          rotationY={0.38}
-          screen={paddleScreen}
-          marquee="PADDLES"
-          accent="#ff4fa3"
-          sideColor="#3a0f33"
-          interactive={interactive}
-          onActivate={() => onToast('PADDLES needs a second player. Try the middle cabinet.')}
-        />
-        <Cabinet
-          position={[1.45, 0, 0.1]}
-          rotationY={-0.38}
-          screen={brokenScreen}
-          marquee="STAR RAID"
-          accent="#ffb23f"
-          sideColor="#3a260c"
-          interactive={interactive}
-          onActivate={() => onToast('OUT OF ORDER. Try the middle cabinet.')}
-        />
-
-        <Sparkles count={lowPower ? 30 : 70} scale={[6, 3, 3]} position={[0, 1.8, 0.6]} size={2} speed={0.3} opacity={0.5} color="#9fd8ff" noise={0.5} />
+        <color attach="background" args={['#cfe6ff']} />
+        <Lights lowPower={lowPower} />
+        <WindowView />
+        <Room interactive={interactive} />
+        <Desk screen={screen} interactive={interactive} onStart={onStart} onScreenHover={setHovered} />
+        <Corner interactive={interactive} onToast={onToast} />
+        {/* dust drifting in the sunbeam */}
+        <Sparkles count={lowPower ? 20 : 45} scale={[2.2, 1.2, 1.4]} position={[0.3, 1.25, -0.4]} size={1.6} speed={motion ? 0.2 : 0} opacity={0.7} color="#fff3d6" />
         <CameraRig phase={phase} parallax={parallax} onZoomInDone={onZoomInDone} onZoomOutDone={onZoomOutDone} />
 
         <EffectComposer multisampling={lowPower ? 0 : 4}>
-          <Bloom mipmapBlur luminanceThreshold={1} intensity={1.3} radius={0.75} />
-          <Vignette offset={0.25} darkness={0.7} />
+          <Bloom mipmapBlur luminanceThreshold={1} intensity={0.6} radius={0.7} />
+          <Vignette offset={0.3} darkness={0.4} />
         </EffectComposer>
       </Canvas>
     </div>

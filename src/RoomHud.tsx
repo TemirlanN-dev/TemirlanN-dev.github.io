@@ -26,7 +26,7 @@ export default function RoomHud({ ready, toast, onSkip }: Props) {
 
       {ready && (
         <p className="room-hint">
-          <span className="blink">{touch ? 'TAP THE CABINET' : 'CLICK THE CABINET'}</span>
+          <span className="blink">{touch ? 'Tap the monitor to log in' : 'Click the monitor to log in'}</span>
           {!touch && <span className="room-hint-sub">or press Enter</span>}
         </p>
       )}

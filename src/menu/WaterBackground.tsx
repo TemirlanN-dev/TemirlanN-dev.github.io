@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useMotion } from '../lib/motion'
 
 // A full-screen fragment shader: bright underwater blue with drifting clouds, caustics and light shafts.
-// Plain WebGL (no three.js) so the menu stays light when visited without the arcade.
+// Plain WebGL (no three.js) so the menu stays light when visited without the 3D room.
 
 const VERTEX = `
 attribute vec2 position;

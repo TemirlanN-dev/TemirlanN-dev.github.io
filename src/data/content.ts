@@ -12,7 +12,7 @@ export const MENU: MenuItem[] = [
   { id: 'stats', label: 'Stats', command: 'Check my numbers' },
   { id: 'about', label: 'About', command: 'Meet the player' },
   { id: 'contact', label: 'Contact', command: 'Send a message' },
-  { id: 'exit', label: 'Exit', command: 'Back to the arcade' },
+  { id: 'exit', label: 'Exit', command: 'Back to my room' },
 ]
 
 export const PROFILE = {
