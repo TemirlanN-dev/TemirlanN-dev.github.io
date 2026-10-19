@@ -1,9 +1,10 @@
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import { useMotion } from '../lib/motion'
 import { sfx } from '../lib/sound'
 import { ROOM, WINDOW } from './layout'
+import { useSceneTime } from './sceneTime'
 import { useStaticTexture } from './textures'
 import { Block, Clickable, Part, Rod, Toon } from './toon'
 
@@ -127,10 +128,11 @@ function Curtain({ x }: { x: number }) {
     g.computeVertexNormals()
     return { geometry: g, base: Float32Array.from(p.array) }
   }, [])
+  const time = useSceneTime()
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (!motion) return
-    const t = clock.elapsedTime
+    const t = time.current
     const p = geometry.attributes.position
     for (let i = 0; i < p.count; i++) {
       const bx = base[i * 3]
@@ -153,14 +155,15 @@ function Curtain({ x }: { x: number }) {
 /** A glass fūrin hanging in the window. Click it to ring it. */
 function WindChime({ enabled }: { enabled: boolean }) {
   const motion = useMotion()
-  const clock = useThree((s) => s.clock)
+  const time = useSceneTime()
   const swing = useRef<THREE.Group>(null)
   const struck = useRef(-10)
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (!swing.current) return
-    const t = clock.elapsedTime
-    const kick = Math.exp(-(t - struck.current) * 1.4) * 0.35
+    const t = time.current
+    // the ring dies away after a strike; clamped so a bad timestamp can never blow it up
+    const kick = Math.exp(-Math.max(0, t - struck.current) * 1.4) * 0.35
     const breeze = motion ? 0.07 : 0
     swing.current.rotation.z = Math.sin(t * 1.3) * breeze + Math.sin((t - struck.current) * 7) * kick
     swing.current.rotation.x = Math.sin(t * 0.9 + 1) * breeze * 0.5
@@ -171,7 +174,7 @@ function WindChime({ enabled }: { enabled: boolean }) {
       enabled={enabled}
       position={[-0.62, WINDOW.top - 0.06, ROOM.back + 0.08]}
       onClick={() => {
-        struck.current = clock.elapsedTime
+        struck.current = time.current
         sfx.chime()
       }}
     >

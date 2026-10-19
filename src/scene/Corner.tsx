@@ -1,9 +1,10 @@
 import { useRef } from 'react'
 import * as THREE from 'three'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import { useMotion } from '../lib/motion'
 import { sfx } from '../lib/sound'
 import { ROOM } from './layout'
+import { useSceneTime } from './sceneTime'
 import { useStaticTexture } from './textures'
 import { Block, Clickable, Part, Toon } from './toon'
 
@@ -179,14 +180,48 @@ function FloorPlant() {
   )
 }
 
-function Futon() {
-  const x = ROOM.halfWidth - 0.5
+const BED = { x: ROOM.halfWidth - 0.55, head: ROOM.back + 0.08, foot: 0.97, mattressTop: 0.46 }
+const BED_WOOD = '#b4865c'
+const BED_DARK = '#8b5e3c'
+
+/** A low wooden bed against the right wall: legs, frame, slatted headboard and footboard. */
+function Bed() {
+  const { x, head, foot, mattressTop } = BED
+  const length = foot - head
+  const mid = (head + foot) / 2
+  const legs: [number, number][] = [
+    [x - 0.47, head + 0.06],
+    [x + 0.47, head + 0.06],
+    [x - 0.47, foot - 0.06],
+    [x + 0.47, foot - 0.06],
+  ]
+  const slats = [-0.3, -0.1, 0.1, 0.3]
   return (
     <group>
-      <Block size={[0.95, 0.09, 2.0]} position={[x, 0.045, -0.15]} color="#f5f2ec" />
-      <Block size={[0.97, 0.06, 1.35]} position={[x, 0.11, 0.17]} color={BLUE} />
-      <Block size={[0.97, 0.066, 0.13]} position={[x, 0.114, -0.5]} color="#e8edf8" />
-      <Part position={[x, 0.13, -0.92]} scale={[0.3, 0.06, 0.17]} color="#ffffff" shape={<sphereGeometry args={[1, 20, 12]} />} />
+      {legs.map(([lx, lz]) => (
+        <Block key={`${lx}${lz}`} size={[0.07, 0.1, 0.07]} position={[lx, 0.05, lz]} color={BED_DARK} />
+      ))}
+      <Block size={[1.02, 0.2, length - 0.04]} position={[x, 0.2, mid]} color={BED_WOOD} />
+      <Block size={[0.94, 0.16, length - 0.12]} position={[x, mattressTop - 0.08, mid + 0.02]} color="#f5f2ec" />
+      {/* duvet, its turned-down top edge, and a pillow */}
+      <Block size={[0.98, 0.05, 1.32]} position={[x, mattressTop + 0.02, foot - 0.74]} color={BLUE} />
+      <Block size={[0.98, 0.056, 0.13]} position={[x, mattressTop + 0.024, foot - 1.42]} color="#e8edf8" />
+      <Part position={[x, mattressTop + 0.05, head + 0.25]} scale={[0.3, 0.06, 0.16]} color="#ffffff" shape={<sphereGeometry args={[1, 20, 12]} />} />
+      {/* headboard: two posts, a top rail and slats */}
+      {[-0.5, 0.5].map((dx) => (
+        <Block key={dx} size={[0.07, 0.86, 0.07]} position={[x + dx, 0.43, head]} color={BED_DARK} />
+      ))}
+      <Block size={[1.08, 0.07, 0.09]} position={[x, 0.86, head]} color={BED_DARK} />
+      <Block size={[0.96, 0.05, 0.04]} position={[x, 0.55, head]} color={BED_WOOD} />
+      {slats.map((dx) => (
+        <Block key={dx} size={[0.08, 0.3, 0.03]} position={[x + dx, 0.71, head]} color={BED_WOOD} />
+      ))}
+      {/* low footboard */}
+      {[-0.5, 0.5].map((dx) => (
+        <Block key={dx} size={[0.07, 0.56, 0.07]} position={[x + dx, 0.28, foot]} color={BED_DARK} />
+      ))}
+      <Block size={[1.0, 0.24, 0.04]} position={[x, 0.42, foot]} color={BED_WOOD} />
+      <Block size={[1.08, 0.05, 0.08]} position={[x, 0.56, foot]} color={BED_DARK} />
       {/* a floor cushion on the rug */}
       <Block size={[0.48, 0.06, 0.48]} position={[-0.5, 0.04, 0.75]} rotation={[0, 0.3, 0]} color={RED} />
     </group>
@@ -196,17 +231,17 @@ function Futon() {
 /** A sleeping cat on the futon. Breathes, and answers when clicked. */
 function Cat({ interactive, onToast }: { interactive: boolean; onToast: (m: string) => void }) {
   const motion = useMotion()
-  const clock = useThree((s) => s.clock)
+  const time = useSceneTime()
   const body = useRef<THREE.Group>(null)
   const poked = useRef(-10)
   const ORANGE = '#f0a14f'
   const CREAM = '#fff4e6'
 
-  useFrame(({ clock: c }) => {
+  useFrame(() => {
     if (!body.current) return
-    const t = c.elapsedTime
+    const t = time.current
     const breathe = motion ? Math.sin(t * 2.2) * 0.03 : 0
-    const hop = Math.max(0, Math.sin(Math.min(1, (t - poked.current) * 3) * Math.PI)) * 0.04
+    const hop = Math.sin(Math.min(1, Math.max(0, t - poked.current) * 3) * Math.PI) * 0.04
     body.current.scale.set(1, 1 + breathe, 1)
     body.current.position.y = hop
   })
@@ -214,10 +249,10 @@ function Cat({ interactive, onToast }: { interactive: boolean; onToast: (m: stri
   return (
     <Clickable
       enabled={interactive}
-      position={[ROOM.halfWidth - 0.55, 0.15, -0.6]}
+      position={[BED.x, BED.mattressTop + 0.045, BED.head + 0.62]}
       rotation={[0, 0.5, 0]}
       onClick={() => {
-        poked.current = clock.elapsedTime
+        poked.current = time.current
         sfx.meow()
         onToast('The cat opens one eye, decides you are fine, and goes back to sleep.')
       }}
@@ -249,7 +284,7 @@ export default function Corner({ interactive, onToast }: { interactive: boolean;
       <WallDecor />
       <Bookshelf />
       <FloorPlant />
-      <Futon />
+      <Bed />
       <Cat interactive={interactive} onToast={onToast} />
     </>
   )

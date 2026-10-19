@@ -1,10 +1,12 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import { useMotion } from '../lib/motion'
+import type { Daylight } from './daylight'
 
-// The view out of the window: a summer sea painted by a shader on a big backdrop far
-// outside, so it shifts with the camera like real distance. Anime-style cel-shaded clouds,
-// hazy islands, glittering water and a little sailboat crossing the horizon.
+// The view out of the window: the sea, painted by a shader on a big backdrop far outside, so
+// it shifts with the camera like real distance. Anime-style cel-shaded clouds, hazy islands,
+// rolling swells and a little sailboat; sky, sun or moon, and colours follow the time of day.
 
 const WIDTH = 24
 const HEIGHT = 12
@@ -21,6 +23,9 @@ void main() {
 
 const fragmentShader = /* glsl */ `
 uniform float uTime;
+uniform vec3 uSkyTop, uSkyHorizon, uBodyColor, uCloudLit, uCloudShade, uSeaNear, uSeaFar, uGlitter, uHaze, uIsland;
+uniform vec2 uBody;
+uniform float uBodySize, uMoon, uStars;
 varying vec2 vUv;
 
 float hash(vec2 p) {
@@ -49,12 +54,10 @@ float fbm(vec2 p) {
 
 // cumulus: noise squeezed into towers that sit on a flat-ish base just above the horizon
 float cloudField(vec2 q) {
-  float n = fbm(vec2(q.x * 0.28 + uTime * 0.012, q.y * 0.5));
+  float n = fbm(vec2(q.x * 0.28 + uTime * 0.025, q.y * 0.5));
   float band = smoothstep(0.15, 0.7, q.y) * smoothstep(4.6, 1.2, q.y);
   return n * band;
 }
-
-const vec2 SUN = vec2(3.4, 3.0);
 
 void main() {
   // metres on the backdrop; it is centred at eye level, so the horizon is y = 0
@@ -62,25 +65,34 @@ void main() {
   vec3 col;
 
   if (q.y > 0.0) {
-    // sky: pale near the horizon, deep summer blue overhead
-    float h = q.y / 4.5;
-    col = mix(vec3(0.80, 0.95, 1.0), vec3(0.22, 0.52, 1.0), smoothstep(0.0, 1.0, h));
+    col = mix(uSkyHorizon, uSkyTop, smoothstep(0.0, 1.0, q.y / 4.5));
 
-    // sun glow
-    float sd = length(q - SUN);
-    col += vec3(1.0, 0.96, 0.85) * (0.55 * exp(-sd * 0.9) + 1.6 * smoothstep(0.42, 0.36, sd));
+    // stars, twinkling, fading out toward the hazy horizon
+    vec2 cell = floor(q * 9.0);
+    float star = step(0.985, hash(cell)) * smoothstep(0.4, 1.6, q.y);
+    float twinkle = 0.6 + 0.4 * sin(uTime * 2.0 + hash(cell + 7.0) * 30.0);
+    vec2 inCell = fract(q * 9.0) - 0.5;
+    col += vec3(1.0) * star * twinkle * smoothstep(0.12, 0.0, length(inCell)) * uStars;
 
-    // distant islands in blue haze
+    // sun (bright, blooming) or moon (crisp disc with soft craters)
+    float d = length(q - uBody);
+    float disc = smoothstep(uBodySize, uBodySize - 0.03, d);
+    vec3 sun = uBodyColor * (0.55 * exp(-d * 0.9) + 1.6 * disc);
+    float craters = 0.85 + 0.15 * smoothstep(0.45, 0.6, noise((q - uBody) * 4.0 / uBodySize));
+    vec3 moon = mix(col + uBodyColor * 0.35 * exp(-d * 1.4), uBodyColor * craters * 1.15, disc);
+    col = mix(col + sun, moon, uMoon);
+
+    // distant islands in haze
     float island = 0.42 * exp(-pow((q.x + 3.6) / 1.1, 2.0)) + 0.26 * exp(-pow((q.x + 2.3) / 0.7, 2.0)) + 0.18 * exp(-pow((q.x - 5.2) / 0.9, 2.0));
-    if (q.y < island) col = mix(vec3(0.46, 0.64, 0.86), vec3(0.62, 0.78, 0.94), q.y / max(island, 0.01));
+    if (q.y < island) col = mix(uIsland, mix(uIsland, uHaze, 0.5), q.y / max(island, 0.01));
 
-    // cel-shaded clouds: white where lit, a flat blue-grey shadow on the side away from the sun
-    float d = cloudField(q);
-    float body = smoothstep(0.43, 0.445, d);
-    float towardSun = cloudField(q + normalize(SUN - q) * 0.22);
-    float shade = smoothstep(0.47, 0.49, towardSun) * smoothstep(0.43, 0.5, d);
-    vec3 cloud = mix(vec3(1.0), vec3(0.74, 0.83, 0.97), shade);
-    cloud = mix(cloud, vec3(0.66, 0.77, 0.94), smoothstep(1.0, 0.25, q.y) * 0.6);
+    // cel-shaded clouds: lit where they face the sun or moon, a flat shadow on the far side
+    float density = cloudField(q);
+    float body = smoothstep(0.43, 0.445, density);
+    float towardLight = cloudField(q + normalize(uBody - q) * 0.22);
+    float shade = smoothstep(0.47, 0.49, towardLight) * smoothstep(0.43, 0.5, density);
+    vec3 cloud = mix(uCloudLit, uCloudShade, shade);
+    cloud = mix(cloud, mix(uCloudShade, uCloudLit, 0.4), smoothstep(1.0, 0.25, q.y) * 0.5);
     col = mix(col, cloud, body);
 
     // a sailboat working its way along the horizon
@@ -88,45 +100,91 @@ void main() {
     vec2 b = q - vec2(bx, 0.0);
     float sail = step(0.0, b.y) * step(b.y, 0.32) * step(abs(b.x - 0.02), 0.12 * (1.0 - b.y / 0.32));
     float hull = step(abs(b.x), 0.16) * step(-0.05, b.y) * step(b.y, 0.02);
-    col = mix(col, vec3(1.0), sail);
-    col = mix(col, vec3(0.2, 0.25, 0.45), hull);
+    col = mix(col, mix(uCloudLit, vec3(1.0), 0.5), sail);
+    col = mix(col, uIsland * 0.6, hull);
   } else {
     // sea: rows closer to the horizon are further away, so detail compresses toward it
     float depth = -q.y;
     float z = 1.0 / (depth + 0.06);
     vec2 w = vec2(q.x * z * 0.6, z * 1.2);
-    col = mix(vec3(0.42, 0.72, 0.97), vec3(0.06, 0.3, 0.8), smoothstep(0.0, 2.2, depth));
+    col = mix(uSeaFar, uSeaNear, smoothstep(0.0, 2.2, depth));
 
-    // swell lines rolling toward the shore
-    float swell = sin(w.y * 2.4 + noise(w * 1.5) * 3.0 - uTime * 1.4);
-    col = mix(col, col + vec3(0.12, 0.16, 0.2), smoothstep(0.86, 0.98, swell));
+    // swells rolling in toward the shore: lighter crests, darker troughs
+    float roll = uTime;
+    float swell = 0.6 * sin(w.y * 2.2 - roll * 1.5 + noise(w * 0.8 + roll * 0.08) * 4.0)
+                + 0.4 * sin(w.y * 3.7 + w.x * 0.6 - roll * 2.0 + noise(w * 1.3 - roll * 0.12) * 3.0);
+    col *= 0.88 + 0.16 * swell;
+    col = mix(col, uGlitter, smoothstep(0.8, 0.97, swell) * 0.28);
 
-    // glitter, strongest in the sun's reflection
-    float sunColumn = exp(-pow((q.x - SUN.x) * 0.55, 2.0));
-    float glitter = noise(vec2(w.x * 7.0, w.y * 5.0 - uTime * 1.1));
-    col += vec3(1.0, 0.98, 0.9) * smoothstep(0.86 - sunColumn * 0.2, 0.92 - sunColumn * 0.2, glitter) * (0.6 + sunColumn);
+    // whitecaps drifting with the swell
+    float caps = noise(vec2(w.x * 3.0 + roll * 0.25, w.y * 2.0 - roll * 1.3));
+    col = mix(col, mix(uGlitter, vec3(1.0), 0.5), smoothstep(0.8, 0.85, caps) * smoothstep(0.3, 1.4, depth) * 0.55);
+
+    // glitter, strongest in the path of the sun or moon
+    float column = exp(-pow((q.x - uBody.x) * 0.55, 2.0)) * step(-0.2, uBody.y);
+    float glitter = max(noise(vec2(w.x * 7.0, w.y * 5.0 - uTime * 1.6)), noise(vec2(w.x * 9.0 + 3.0, w.y * 6.0 + uTime * 1.2)));
+    col += uGlitter * smoothstep(0.86 - column * 0.2, 0.92 - column * 0.2, glitter) * (0.45 + column);
 
     // haze where sea meets sky
-    col = mix(col, vec3(0.8, 0.93, 1.0), exp(-depth * 9.0) * 0.7);
+    col = mix(col, uHaze, exp(-depth * 9.0) * 0.7);
   }
 
   // authored in sRGB; the renderer works in linear light
-  gl_FragColor = vec4(pow(col, vec3(2.2)), 1.0);
+  gl_FragColor = vec4(pow(max(col, 0.0), vec3(2.2)), 1.0);
 }
 `
 
-export default function WindowView() {
+const COLOR_UNIFORMS = ['SkyTop', 'SkyHorizon', 'BodyColor', 'CloudLit', 'CloudShade', 'SeaNear', 'SeaFar', 'Glitter', 'Haze', 'Island'] as const
+
+export default function WindowView({ daylight }: { daylight: Daylight }) {
   const motion = useMotion()
-  const uniforms = useMemo(() => ({ uTime: { value: 30 } }), [])
+  // R3F copies the `uniforms` prop into the material's own objects, so updates must go to
+  // material.uniforms; writing to the object we passed in never reaches the GPU
+  const material = useRef<THREE.ShaderMaterial>(null)
+  const initialUniforms = useMemo(() => {
+    const u: Record<string, THREE.IUniform> = {
+      uTime: { value: 30 },
+      uBody: { value: new THREE.Vector2() },
+      uBodySize: { value: 0.4 },
+      uMoon: { value: 0 },
+      uStars: { value: 0 },
+    }
+    for (const name of COLOR_UNIFORMS) u[`u${name}`] = { value: new THREE.Color() }
+    return u
+  }, [])
+
+  // the shader works in sRGB, while THREE.Color keeps linear values
+  useEffect(() => {
+    if (!material.current) return
+    const uniforms = material.current.uniforms
+    const s = daylight.sky
+    const colors: Record<(typeof COLOR_UNIFORMS)[number], THREE.Color> = {
+      SkyTop: s.top,
+      SkyHorizon: s.horizon,
+      BodyColor: s.bodyColor,
+      CloudLit: s.cloudLit,
+      CloudShade: s.cloudShade,
+      SeaNear: s.seaNear,
+      SeaFar: s.seaFar,
+      Glitter: s.glitter,
+      Haze: s.haze,
+      Island: s.island,
+    }
+    for (const name of COLOR_UNIFORMS) (uniforms[`u${name}`].value as THREE.Color).copy(colors[name]).convertLinearToSRGB()
+    ;(uniforms.uBody.value as THREE.Vector2).copy(s.body)
+    uniforms.uBodySize.value = s.bodySize
+    uniforms.uMoon.value = s.moon
+    uniforms.uStars.value = s.stars
+  }, [daylight])
 
   useFrame((_, delta) => {
-    if (motion) uniforms.uTime.value += Math.min(delta, 0.1)
+    if (motion && material.current) material.current.uniforms.uTime.value += Math.min(delta, 0.1)
   })
 
   return (
     <mesh position={[0, EYE_LEVEL, -1.2 - DISTANCE]}>
       <planeGeometry args={[WIDTH, HEIGHT]} />
-      <shaderMaterial vertexShader={vertexShader} fragmentShader={fragmentShader} uniforms={uniforms} toneMapped={false} />
+      <shaderMaterial ref={material} vertexShader={vertexShader} fragmentShader={fragmentShader} uniforms={initialUniforms} toneMapped={false} />
     </mesh>
   )
 }

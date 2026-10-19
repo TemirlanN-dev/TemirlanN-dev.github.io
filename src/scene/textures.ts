@@ -16,12 +16,15 @@ function makeCanvasTexture(w: number, h: number) {
 export function useAnimatedTexture(w: number, h: number, draw: (ctx: CanvasRenderingContext2D, t: number) => void, fps: number) {
   const target = useMemo(() => makeCanvasTexture(w, h), [w, h])
   const sinceDraw = useRef(Infinity)
+  // our own clock: R3F's resets when the frame loop restarts, which would rewind the screen
+  const time = useRef(0)
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
+    time.current += Math.min(delta, 0.1)
     sinceDraw.current += delta
     if (sinceDraw.current < 1 / fps) return
     sinceDraw.current = 0
-    draw(target.ctx, state.clock.elapsedTime)
+    draw(target.ctx, time.current)
     target.texture.needsUpdate = true
   })
 

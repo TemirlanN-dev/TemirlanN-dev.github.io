@@ -45,9 +45,10 @@ function Monitor({ screen, interactive, onStart, onHover }: { screen: ScreenProg
   )
 }
 
-/** Desk lamp; click to switch it on and off. */
-function Lamp({ interactive }: { interactive: boolean }) {
-  const [on, setOn] = useState(true)
+/** Desk lamp: comes on by itself in the evening; click to switch it either way. */
+function Lamp({ interactive, autoOn }: { interactive: boolean; autoOn: boolean }) {
+  const [on, setOn] = useState(autoOn)
+  useEffect(() => setOn(autoOn), [autoOn])
   const spot = useRef<THREE.SpotLight>(null)
   const target = useRef<THREE.Object3D>(null)
   useEffect(() => {
@@ -142,9 +143,17 @@ function DeskPlant() {
   )
 }
 
-type DeskProps = { screen: ScreenProgram; interactive: boolean; onStart: () => void; onScreenHover: (h: boolean) => void }
+type DeskProps = {
+  screen: ScreenProgram
+  interactive: boolean
+  onStart: () => void
+  onScreenHover: (h: boolean) => void
+  lampOn: boolean
+  /** how strongly the screen lights the keyboard; much more noticeable at night */
+  screenGlow: number
+}
 
-export default function Desk({ screen, interactive, onStart, onScreenHover }: DeskProps) {
+export default function Desk({ screen, interactive, onStart, onScreenHover, lampOn, screenGlow }: DeskProps) {
   const keys = useStaticTexture(448, 160, paintKeys, [])
   const top = DESK_TOP
   return (
@@ -162,7 +171,7 @@ export default function Desk({ screen, interactive, onStart, onScreenHover }: De
 
       <Monitor screen={screen} interactive={interactive} onStart={onStart} onHover={onScreenHover} />
       {/* the screen's glow on the keyboard */}
-      <pointLight position={[0, 1.1, -0.7]} color="#8fc8ff" intensity={0.35} distance={1.3} decay={2} />
+      <pointLight position={[0, 1.1, -0.7]} color="#8fc8ff" intensity={screenGlow} distance={1.6} decay={2} />
 
       <group position={[0, top + 0.011, -0.62]}>
         <Block size={[0.44, 0.022, 0.14]} color="#f2f2f5" />
@@ -173,7 +182,7 @@ export default function Desk({ screen, interactive, onStart, onScreenHover }: De
       </group>
       <Part position={[0.33, top + 0.012, -0.6]} scale={[0.032, 0.016, 0.05]} color="#f2f2f5" shape={<sphereGeometry args={[1, 16, 10]} />} />
 
-      <Lamp interactive={interactive} />
+      <Lamp interactive={interactive} autoOn={lampOn} />
       <Mug />
       <Headphones />
       <Books />
