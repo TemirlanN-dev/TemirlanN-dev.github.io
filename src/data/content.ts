@@ -103,7 +103,7 @@ export const PROJECTS: Project[] = [
       'Reading lists, wishlists and profiles with avatar upload, on Supabase auth.',
     ],
     stack: ['Next.js', 'React', 'TypeScript', 'Supabase', 'Tailwind CSS', 'Vercel'],
-    links: [{ label: 'Live site', href: 'https://webapp-seven-teal.vercel.app' }, repo('chancesong10/AllBookd')],
+    links: [{ label: 'Live site', href: 'https://allbookd.vercel.app/' }, repo('chancesong10/AllBookd')],
     team: 'Built with a teammate (chancesong10).',
   },
   {

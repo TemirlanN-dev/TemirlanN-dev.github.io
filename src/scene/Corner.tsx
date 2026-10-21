@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useMotion } from '../lib/motion'
@@ -228,36 +228,113 @@ function Bed() {
   )
 }
 
-/** A sleeping cat on the futon. Breathes, and answers when clicked. */
+// what the cat thinks of being clicked, by click count; past the last one it blows up
+const CAT_MOODS: [clicks: number, message: string][] = [
+  [1, 'The cat opens one eye, decides you are fine, and goes back to sleep.'],
+  [4, 'The cat flicks its tail. A warning.'],
+  [7, 'The cat is vibrating slightly. This seems bad.'],
+  [9, 'The cat is glowing. Maybe stop?'],
+  [10, 'One more click and something terrible will happen.'],
+]
+const BLOW_UP_AFTER = 10
+const RESPAWN_SECONDS = 4
+
+const PUFF_COLORS = ['#f0a14f', '#fff4e6', '#ffffff', '#ffd27a', '#d9863a']
+const PUFFS = Array.from({ length: 26 }, (_, i) => {
+  const a = i * 2.39996 // golden angle: an even spread all round
+  const up = 0.35 + ((i * 7) % 10) / 10
+  return {
+    v: new THREE.Vector3(Math.cos(a) * 0.9, up * 1.6, Math.sin(a) * 0.9).multiplyScalar(0.7 + ((i * 3) % 5) * 0.12),
+    size: 0.03 + ((i * 5) % 7) * 0.008,
+    color: PUFF_COLORS[i % PUFF_COLORS.length],
+  }
+})
+
+/** Cartoon explosion: a white flash and puffs of cat-coloured smoke flying out and shrinking. */
+function Explosion({ age }: { age: React.MutableRefObject<number> }) {
+  const puffs = useRef<(THREE.Mesh | null)[]>([])
+  const flash = useRef<THREE.Mesh>(null)
+  useFrame(() => {
+    const t = age.current
+    PUFFS.forEach((p, i) => {
+      const m = puffs.current[i]
+      if (!m) return
+      m.position.set(p.v.x * t, p.v.y * t - 1.4 * t * t, p.v.z * t)
+      m.scale.setScalar(Math.max(0, 1 + t * 1.5 - t * t * 2.2))
+    })
+    if (flash.current) flash.current.scale.setScalar(Math.max(0, 0.35 * (1 - t * 4)) + 0.0001)
+  })
+  return (
+    <group position={[0, 0.07, 0]}>
+      <mesh ref={flash}>
+        <sphereGeometry args={[1, 16, 12]} />
+        <meshBasicMaterial color={new THREE.Color(4, 3.6, 3)} toneMapped={false} />
+      </mesh>
+      {PUFFS.map((p, i) => (
+        <mesh key={i} ref={(m) => { puffs.current[i] = m }}>
+          <sphereGeometry args={[p.size, 10, 8]} />
+          <Toon color={p.color} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** A sleeping cat on the bed. Breathes, answers when clicked, and has limits. */
 function Cat({ interactive, onToast }: { interactive: boolean; onToast: (m: string) => void }) {
   const motion = useMotion()
   const time = useSceneTime()
   const body = useRef<THREE.Group>(null)
   const poked = useRef(-10)
+  const clicks = useRef(0)
+  const blownAt = useRef(-100)
+  const age = useRef(0)
+  const [state, setState] = useState<'here' | 'boom'>('here')
   const ORANGE = '#f0a14f'
   const CREAM = '#fff4e6'
 
   useFrame(() => {
-    if (!body.current) return
     const t = time.current
+    age.current = t - blownAt.current
+    if (state === 'boom' && age.current > RESPAWN_SECONDS) {
+      setState('here')
+      onToast('A new cat has appeared. Cats have nine lives.')
+    }
+    if (!body.current) return
     const breathe = motion ? Math.sin(t * 2.2) * 0.03 : 0
     const hop = Math.sin(Math.min(1, Math.max(0, t - poked.current) * 3) * Math.PI) * 0.04
-    body.current.scale.set(1, 1 + breathe, 1)
-    body.current.position.y = hop
+    // the angrier it gets, the more it shakes
+    const shake = clicks.current >= 7 ? Math.sin(t * 60) * 0.004 * (clicks.current - 6) : 0
+    // pops back in after respawning
+    const pop = Math.min(1, Math.max(0, age.current - RESPAWN_SECONDS) * 4)
+    const appear = blownAt.current < 0 ? 1 : 1 + Math.sin(pop * Math.PI) * 0.25 * (1 - pop) + (pop - 1)
+    body.current.scale.set(appear, appear * (1 + breathe), appear)
+    body.current.position.set(shake, hop, 0)
   })
 
   return (
     <Clickable
-      enabled={interactive}
+      enabled={interactive && state === 'here'}
       position={[BED.x, BED.mattressTop + 0.045, BED.head + 0.62]}
       rotation={[0, 0.5, 0]}
       onClick={() => {
+        clicks.current += 1
         poked.current = time.current
+        if (clicks.current > BLOW_UP_AFTER) {
+          clicks.current = 0
+          blownAt.current = time.current
+          age.current = 0
+          setState('boom')
+          sfx.boom()
+          onToast('BOOM. You were warned.')
+          return
+        }
         sfx.meow()
-        onToast('The cat opens one eye, decides you are fine, and goes back to sleep.')
+        onToast(CAT_MOODS.filter(([n]) => clicks.current >= n).at(-1)![1])
       }}
     >
-      <group ref={body}>
+      {state === 'boom' && <Explosion age={age} />}
+      <group ref={body} visible={state === 'here'}>
         <Part position={[0, 0.055, 0]} scale={[0.15, 0.065, 0.105]} color={ORANGE} shape={<sphereGeometry args={[1, 20, 14]} />} />
         <Part position={[-0.06, 0.05, 0.05]} scale={[0.06, 0.04, 0.05]} color={CREAM} ink={false} shape={<sphereGeometry args={[1, 14, 10]} />} />
         <Part position={[0.09, 0.07, 0.0]} scale={[0.03, 0.022, 0.07]} color="#d9863a" ink={false} shape={<sphereGeometry args={[1, 12, 8]} />} />

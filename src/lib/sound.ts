@@ -71,6 +71,13 @@ export const sfx = {
     tone(520, 0, 0.14, { type: 'triangle', volume: 0.06, slideTo: 820 })
     tone(820, 0.14, 0.3, { type: 'triangle', volume: 0.05, slideTo: 430 })
   },
+  /** a cartoon boom: a falling thump plus a crackle */
+  boom() {
+    if (!enabled) return
+    tone(160, 0, 0.7, { type: 'triangle', volume: 0.12, slideTo: 35 })
+    tone(90, 0, 0.5, { type: 'square', volume: 0.05, slideTo: 30 })
+    tone(1400, 0.02, 0.25, { type: 'sawtooth', volume: 0.02, slideTo: 200 })
+  },
   click() {
     if (enabled) tone(1800, 0, 0.025, { volume: 0.03 })
   },
