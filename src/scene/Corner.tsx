@@ -117,7 +117,7 @@ function WallDecor() {
         <planeGeometry args={[0.39, 0.52]} />
         <Toon color="#ffffff" map={calendar} />
       </mesh>
-      <Part position={[1.84, 1.97, WALL_Z + 0.01]} color={RED} shape={<sphereGeometry args={[0.012, 8, 6]} />} />
+      <Part position={[1.84, 1.97, WALL_Z + 0.01]} color={RED} shape={<sphereGeometry args={[0.012, 7, 5]} />} />
     </>
   )
 }
@@ -143,8 +143,8 @@ function Bookshelf() {
         <Block key={color} size={[0.045, h, 0.17]} position={[-0.3 + i * 0.05, top + h / 2, -0.02]} color={color} rotation={[0, 0, i === 5 ? -0.2 : 0]} />
       ))}
       <Daruma position={[0.18, top, 0.02]} />
-      <Part position={[0.3, top + 0.045, 0.02]} color="#e8e2d6" shape={<cylinderGeometry args={[0.04, 0.032, 0.09, 16]} />} />
-      <Part position={[0.3, top + 0.12, 0.02]} scale={[0.03, 0.06, 0.03]} color="#5bb36a" shape={<sphereGeometry args={[1, 12, 8]} />} />
+      <Part position={[0.3, top + 0.045, 0.02]} color="#e8e2d6" shape={<cylinderGeometry args={[0.04, 0.032, 0.09, 7]} />} />
+      <Part position={[0.3, top + 0.12, 0.02]} scale={[0.03, 0.06, 0.03]} color="#5bb36a" shape={<sphereGeometry args={[1, 7, 5]} />} />
     </group>
   )
 }
@@ -153,9 +153,9 @@ function Bookshelf() {
 function Daruma(props: { position: THREE.Vector3Tuple }) {
   return (
     <group {...props}>
-      <Part position={[0, 0.075, 0]} scale={[0.07, 0.078, 0.065]} color={RED} shape={<sphereGeometry args={[1, 20, 14]} />} />
-      <Part position={[0.01, 0.09, 0.048]} scale={[0.045, 0.04, 0.025]} color="#fff6ea" ink={false} shape={<sphereGeometry args={[1, 16, 10]} />} />
-      <Part position={[-0.006, 0.095, 0.072]} color="#1d1830" ink={false} shape={<sphereGeometry args={[0.008, 8, 6]} />} />
+      <Part position={[0, 0.075, 0]} scale={[0.07, 0.078, 0.065]} color={RED} shape={<sphereGeometry args={[1, 7, 5]} />} />
+      <Part position={[0.01, 0.09, 0.048]} scale={[0.045, 0.04, 0.025]} color="#fff6ea" ink={false} shape={<sphereGeometry args={[1, 7, 5]} />} />
+      <Part position={[-0.006, 0.095, 0.072]} color="#1d1830" ink={false} shape={<sphereGeometry args={[0.008, 7, 5]} />} />
     </group>
   )
 }
@@ -169,13 +169,13 @@ function FloorPlant() {
   }))
   return (
     <group position={[-1.18, 0, -0.95]}>
-      <Part position={[0, 0.15, 0]} color="#e8e2d6" shape={<cylinderGeometry args={[0.13, 0.1, 0.3, 24]} />} />
+      <Part position={[0, 0.15, 0]} color="#e8e2d6" shape={<cylinderGeometry args={[0.13, 0.1, 0.3, 7]} />} />
       {leaves.map(({ a, y, tilt, color }) => (
         <group key={a} position={[0, y, 0]} rotation={[0, a, 0]}>
-          <Part position={[0, 0, 0.12]} rotation={[tilt, 0, 0]} scale={[0.09, 0.012, 0.15]} color={color} shape={<sphereGeometry args={[1, 14, 8]} />} />
+          <Part position={[0, 0, 0.12]} rotation={[tilt, 0, 0]} scale={[0.09, 0.012, 0.15]} color={color} shape={<sphereGeometry args={[1, 7, 5]} />} />
         </group>
       ))}
-      <Part position={[0, 0.5, 0]} color="#4f7f4a" shape={<cylinderGeometry args={[0.01, 0.012, 0.5, 8]} />} />
+      <Part position={[0, 0.5, 0]} color="#4f7f4a" shape={<cylinderGeometry args={[0.01, 0.012, 0.5, 7]} />} />
     </group>
   )
 }
@@ -206,7 +206,7 @@ function Bed() {
       {/* duvet, its turned-down top edge, and a pillow */}
       <Block size={[0.98, 0.05, 1.32]} position={[x, mattressTop + 0.02, foot - 0.74]} color={BLUE} />
       <Block size={[0.98, 0.056, 0.13]} position={[x, mattressTop + 0.024, foot - 1.42]} color="#e8edf8" />
-      <Part position={[x, mattressTop + 0.05, head + 0.25]} scale={[0.3, 0.06, 0.16]} color="#ffffff" shape={<sphereGeometry args={[1, 20, 12]} />} />
+      <Part position={[x, mattressTop + 0.05, head + 0.25]} scale={[0.3, 0.06, 0.16]} color="#ffffff" shape={<sphereGeometry args={[1, 7, 5]} />} />
       {/* headboard: two posts, a top rail and slats */}
       {[-0.5, 0.5].map((dx) => (
         <Block key={dx} size={[0.07, 0.86, 0.07]} position={[x + dx, 0.43, head]} color={BED_DARK} />
@@ -267,12 +267,12 @@ function Explosion({ age }: { age: React.MutableRefObject<number> }) {
   return (
     <group position={[0, 0.07, 0]}>
       <mesh ref={flash}>
-        <sphereGeometry args={[1, 16, 12]} />
+        <sphereGeometry args={[1, 7, 5]} />
         <meshBasicMaterial color={new THREE.Color(4, 3.6, 3)} toneMapped={false} />
       </mesh>
       {PUFFS.map((p, i) => (
         <mesh key={i} ref={(m) => { puffs.current[i] = m }}>
-          <sphereGeometry args={[p.size, 10, 8]} />
+          <sphereGeometry args={[p.size, 7, 5]} />
           <Toon color={p.color} />
         </mesh>
       ))}
@@ -335,19 +335,19 @@ function Cat({ interactive, onToast }: { interactive: boolean; onToast: (m: stri
     >
       {state === 'boom' && <Explosion age={age} />}
       <group ref={body} visible={state === 'here'}>
-        <Part position={[0, 0.055, 0]} scale={[0.15, 0.065, 0.105]} color={ORANGE} shape={<sphereGeometry args={[1, 20, 14]} />} />
-        <Part position={[-0.06, 0.05, 0.05]} scale={[0.06, 0.04, 0.05]} color={CREAM} ink={false} shape={<sphereGeometry args={[1, 14, 10]} />} />
-        <Part position={[0.09, 0.07, 0.0]} scale={[0.03, 0.022, 0.07]} color="#d9863a" ink={false} shape={<sphereGeometry args={[1, 12, 8]} />} />
-        <Part rotation={[-Math.PI / 2, 0, 1.2]} position={[0, 0.02, 0]} color={ORANGE} shape={<torusGeometry args={[0.13, 0.018, 8, 24, 2.3]} />} />
+        <Part position={[0, 0.055, 0]} scale={[0.15, 0.065, 0.105]} color={ORANGE} shape={<sphereGeometry args={[1, 7, 5]} />} />
+        <Part position={[-0.06, 0.05, 0.05]} scale={[0.06, 0.04, 0.05]} color={CREAM} ink={false} shape={<sphereGeometry args={[1, 7, 5]} />} />
+        <Part position={[0.09, 0.07, 0.0]} scale={[0.03, 0.022, 0.07]} color="#d9863a" ink={false} shape={<sphereGeometry args={[1, 7, 5]} />} />
+        <Part rotation={[-Math.PI / 2, 0, 1.2]} position={[0, 0.02, 0]} color={ORANGE} shape={<torusGeometry args={[0.13, 0.018, 4, 9, 2.3]} />} />
         <group position={[-0.13, 0.07, 0.06]}>
-          <Part scale={[0.068, 0.062, 0.064]} color={ORANGE} shape={<sphereGeometry args={[1, 20, 14]} />} />
-          <Part position={[-0.012, -0.018, 0.045]} scale={[0.032, 0.022, 0.025]} color={CREAM} ink={false} shape={<sphereGeometry args={[1, 12, 8]} />} />
+          <Part scale={[0.068, 0.062, 0.064]} color={ORANGE} shape={<sphereGeometry args={[1, 7, 5]} />} />
+          <Part position={[-0.012, -0.018, 0.045]} scale={[0.032, 0.022, 0.025]} color={CREAM} ink={false} shape={<sphereGeometry args={[1, 7, 5]} />} />
           {[-0.032, 0.03].map((x) => (
             <Part key={x} position={[x, 0.058, -0.005]} rotation={[0, 0, x * 6]} color={ORANGE} shape={<coneGeometry args={[0.022, 0.045, 4]} />} />
           ))}
           {/* closed, contented eyes */}
           {[-0.026, 0.022].map((x) => (
-            <Part key={x} position={[x, 0.008, 0.061]} rotation={[0, 0, Math.PI]} color="#1d1830" ink={false} shape={<torusGeometry args={[0.011, 0.0025, 6, 12, Math.PI]} />} />
+            <Part key={x} position={[x, 0.008, 0.061]} rotation={[0, 0, Math.PI]} color="#1d1830" ink={false} shape={<torusGeometry args={[0.011, 0.0025, 4, 9, Math.PI]} />} />
           ))}
         </group>
       </group>

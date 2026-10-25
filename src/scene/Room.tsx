@@ -46,8 +46,8 @@ function Floor() {
     <>
       <Block size={[ROOM.halfWidth * 2 + 0.2, 0.05, depth]} position={[0, -0.025, (ROOM.front + ROOM.back) / 2]} color="#ffffff" map={planks} ink={false} />
       {/* round rug in front of the desk */}
-      <Part position={[0.1, 0.006, 0.45]} color="#bcd7ee" shape={<cylinderGeometry args={[0.95, 0.95, 0.012, 48]} />} />
-      <Part position={[0.1, 0.008, 0.45]} color="#a3c6e6" ink={false} shape={<cylinderGeometry args={[0.72, 0.72, 0.012, 48]} />} />
+      <Part position={[0.1, 0.006, 0.45]} color="#bcd7ee" shape={<cylinderGeometry args={[0.95, 0.95, 0.012, 10]} />} />
+      <Part position={[0.1, 0.008, 0.45]} color="#a3c6e6" ink={false} shape={<cylinderGeometry args={[0.72, 0.72, 0.012, 10]} />} />
     </>
   )
 }
@@ -181,12 +181,12 @@ function WindChime({ enabled }: { enabled: boolean }) {
       <group ref={swing}>
         <Rod from={[0, 0, 0]} to={[0, -0.13, 0]} radius={0.003} color="#cfd6e6" ink={false} />
         <mesh position={[0, -0.13, 0]} castShadow>
-          <sphereGeometry args={[0.05, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
+          <sphereGeometry args={[0.05, 7, 5, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
           <Toon color="#bfe6ff" transparent opacity={0.7} side={THREE.DoubleSide} />
         </mesh>
-        <Part position={[0, -0.13, 0.049]} color="#e5232e" ink={false} shape={<circleGeometry args={[0.012, 12]} />} />
+        <Part position={[0, -0.13, 0.049]} color="#e5232e" ink={false} shape={<circleGeometry args={[0.012, 7]} />} />
         <Rod from={[0, -0.13, 0]} to={[0, -0.27, 0]} radius={0.002} color="#cfd6e6" ink={false} />
-        <Part position={[0, -0.19, 0]} color="#e5232e" shape={<cylinderGeometry args={[0.008, 0.008, 0.03, 8]} />} />
+        <Part position={[0, -0.19, 0]} color="#e5232e" shape={<cylinderGeometry args={[0.008, 0.008, 0.03, 7]} />} />
         <Block size={[0.04, 0.15, 0.004]} position={[0, -0.34, 0]} color="#ffd3e4" />
       </group>
     </Clickable>

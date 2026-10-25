@@ -152,8 +152,9 @@ float noise(vec2 p) {
 }
 
 void main() {
-  vec3 N = normalize(vNormal);
-  if (!gl_FrontFacing) N = -N;
+  // low-poly water: each triangle takes the normal of its own flat face
+  vec3 N = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
+  if (N.y < 0.0) N = -N;
   vec3 V = normalize(cameraPosition - vWorld);
   float dist = length(vWorld.xz - cameraPosition.xz);
 

@@ -3,7 +3,8 @@ import * as THREE from 'three'
 import type { ThreeElements, ThreeEvent } from '@react-three/fiber'
 import { Outlines } from '@react-three/drei'
 
-// The room's anime look: three-step toon shading plus ink outlines on every part.
+// The room's look: low-poly, flat-shaded facets with three-step toon lighting, plus ink
+// outlines on every part.
 
 /** Three flat light levels: shadow, mid, lit. */
 export const TOON_RAMP = (() => {
@@ -26,8 +27,12 @@ export function Ink({ width = 2.2 }: { width?: number }) {
   return <Outlines thickness={width} color={useContext(InkContext)} />
 }
 
+// three's renderer honours `flatShading` on any material (one tone per face, so low-poly facets
+// show), but MeshToonMaterial's type doesn't declare it, hence the untyped spread
+const FLAT_SHADING = { flatShading: true } as object
+
 export function Toon({ color, map, ...rest }: { color: THREE.ColorRepresentation; map?: THREE.Texture | null } & Omit<ThreeElements['meshToonMaterial'], 'color' | 'map'>) {
-  return <meshToonMaterial color={color} map={map ?? null} gradientMap={TOON_RAMP} {...rest} />
+  return <meshToonMaterial color={color} map={map ?? null} gradientMap={TOON_RAMP} {...FLAT_SHADING} {...rest} />
 }
 
 type PartProps = Omit<ThreeElements['mesh'], 'children'> & {
@@ -66,7 +71,7 @@ export function Rod({ from, to, radius, color, ink = true }: { from: THREE.Vecto
       quaternion={quaternion}
       color={color}
       ink={ink}
-      shape={<cylinderGeometry args={[radius, radius, dir.length(), 10]} />}
+      shape={<cylinderGeometry args={[radius, radius, dir.length(), 6]} />}
     />
   )
 }

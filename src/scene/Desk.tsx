@@ -3,31 +3,15 @@ import * as THREE from 'three'
 import { sfx } from '../lib/sound'
 import { DESK_TOP, MONITOR, SCREEN_CENTER, SCREEN_H, SCREEN_W } from './layout'
 import type { ScreenProgram } from './lockScreen'
-import { useAnimatedTexture, useStaticTexture } from './textures'
-import { Block, Clickable, Part, Rod, Toon } from './toon'
+import Peripherals from './Peripherals'
+import { useAnimatedTexture } from './textures'
+import { Block, Clickable, Part, Rod } from './toon'
 
 const DESK_WOOD = '#d9b48a'
 const WHITE = '#f1eee8'
 const DARK = '#2a2c36'
 const BLUE = '#3d6df2'
 const SCREEN_BOOST = new THREE.Color(1.05, 1.05, 1.05)
-
-function paintKeys(c: CanvasRenderingContext2D, w: number, h: number) {
-  c.fillStyle = '#d9dde6'
-  c.fillRect(0, 0, w, h)
-  c.fillStyle = '#ffffff'
-  const rows = 5
-  const cols = 14
-  const kw = w / cols
-  const kh = h / rows
-  for (let r = 0; r < rows; r++) {
-    for (let k = 0; k < cols; k++) {
-      if (r === rows - 1 && k > 3 && k < 10) continue // space bar row
-      c.fillRect(k * kw + 2, r * kh + 2, kw - 4, kh - 4)
-    }
-  }
-  c.fillRect(4 * kw + 2, (rows - 1) * kh + 2, 6 * kw - 4, kh - 4)
-}
 
 function Monitor({ screen, interactive, onStart, onHover }: { screen: ScreenProgram; interactive: boolean; onStart: () => void; onHover: (h: boolean) => void }) {
   const texture = useAnimatedTexture(screen.width, screen.height, screen.draw, screen.fps)
@@ -66,13 +50,13 @@ function Lamp({ interactive, autoOn }: { interactive: boolean; autoOn: boolean }
         sfx.click()
       }}
     >
-      <Part position={[base[0], DESK_TOP + 0.012, base[2]]} color={WHITE} shape={<cylinderGeometry args={[0.07, 0.075, 0.025, 24]} />} />
+      <Part position={[base[0], DESK_TOP + 0.012, base[2]]} color={WHITE} shape={<cylinderGeometry args={[0.07, 0.075, 0.025, 7]} />} />
       <Rod from={base} to={elbow} radius={0.011} color={WHITE} />
       <Rod from={elbow} to={head} radius={0.011} color={WHITE} />
       <group position={head} rotation={[0.35, 0, 0.45]}>
-        <Part position={[0, -0.03, 0]} color={WHITE} shape={<cylinderGeometry args={[0.025, 0.075, 0.1, 24, 1, true]} />} />
+        <Part position={[0, -0.03, 0]} color={WHITE} shape={<cylinderGeometry args={[0.025, 0.075, 0.1, 7, 1, true]} />} />
         <mesh position={[0, -0.06, 0]}>
-          <sphereGeometry args={[0.024, 12, 8]} />
+          <sphereGeometry args={[0.024, 7, 5]} />
           <meshBasicMaterial color={on ? new THREE.Color(3, 2.4, 1.4) : '#d8d2c4'} toneMapped={false} />
         </mesh>
         <spotLight ref={spot} position={[0, -0.05, 0]} intensity={on ? 3.5 : 0} angle={0.75} penumbra={0.7} distance={1.8} decay={1.6} color="#ffcf8a" />
@@ -82,28 +66,13 @@ function Lamp({ interactive, autoOn }: { interactive: boolean; autoOn: boolean }
   )
 }
 
-function Headphones() {
-  // lying flat on the desk: the band as half a torus, cups at its ends
-  return (
-    <group position={[0.5, DESK_TOP + 0.018, -0.6]} rotation={[0, -0.5, 0]}>
-      <Part rotation={[-Math.PI / 2, 0, 0]} color="#3a3d4a" shape={<torusGeometry args={[0.085, 0.009, 8, 24, Math.PI]} />} />
-      {[-0.085, 0.085].map((x) => (
-        <group key={x} position={[x, 0, 0]}>
-          <Part color="#e9edf5" shape={<cylinderGeometry args={[0.036, 0.036, 0.03, 20]} />} />
-          <Part position={[0, 0.016, 0]} color={BLUE} ink={false} shape={<cylinderGeometry args={[0.026, 0.026, 0.004, 20]} />} />
-        </group>
-      ))}
-    </group>
-  )
-}
-
 function Mug() {
   return (
     <group position={[-0.38, DESK_TOP + 0.05, -0.66]}>
-      <Part color="#f3f6fb" shape={<cylinderGeometry args={[0.038, 0.035, 0.1, 20]} />} />
-      <Part position={[0, 0.02, 0]} color={BLUE} ink={false} shape={<cylinderGeometry args={[0.0385, 0.037, 0.022, 20]} />} />
-      <Part position={[0, 0.049, 0]} color="#5a3420" ink={false} shape={<cylinderGeometry args={[0.032, 0.032, 0.003, 20]} />} />
-      <Part position={[0.045, 0, 0]} color="#f3f6fb" shape={<torusGeometry args={[0.024, 0.007, 8, 16]} />} />
+      <Part color="#f3f6fb" shape={<cylinderGeometry args={[0.038, 0.035, 0.1, 7]} />} />
+      <Part position={[0, 0.02, 0]} color={BLUE} ink={false} shape={<cylinderGeometry args={[0.0385, 0.037, 0.022, 7]} />} />
+      <Part position={[0, 0.049, 0]} color="#5a3420" ink={false} shape={<cylinderGeometry args={[0.032, 0.032, 0.003, 7]} />} />
+      <Part position={[0.045, 0, 0]} color="#f3f6fb" shape={<torusGeometry args={[0.024, 0.007, 4, 9]} />} />
     </group>
   )
 }
@@ -132,11 +101,11 @@ function DeskPlant() {
   })
   return (
     <group position={[0.66, DESK_TOP, -1.02]}>
-      <Part position={[0, 0.06, 0]} color="#d0764a" shape={<cylinderGeometry args={[0.065, 0.05, 0.12, 20]} />} />
-      <Part position={[0, 0.118, 0]} color="#5a3a24" ink={false} shape={<cylinderGeometry args={[0.058, 0.058, 0.006, 20]} />} />
+      <Part position={[0, 0.06, 0]} color="#d0764a" shape={<cylinderGeometry args={[0.065, 0.05, 0.12, 7]} />} />
+      <Part position={[0, 0.118, 0]} color="#5a3a24" ink={false} shape={<cylinderGeometry args={[0.058, 0.058, 0.006, 7]} />} />
       {leaves.map(({ a, tilt, h }) => (
         <group key={a} position={[0, 0.12, 0]} rotation={[0, a, 0]}>
-          <Part position={[0, h * 0.9, 0.035]} rotation={[tilt, 0, 0]} scale={[0.022, h, 0.04]} color={a < 3 ? '#5bb36a' : '#4c9c5c'} shape={<sphereGeometry args={[1, 12, 8]} />} />
+          <Part position={[0, h * 0.9, 0.035]} rotation={[tilt, 0, 0]} scale={[0.022, h, 0.04]} color={a < 3 ? '#5bb36a' : '#4c9c5c'} shape={<sphereGeometry args={[1, 7, 5]} />} />
         </group>
       ))}
     </group>
@@ -154,7 +123,6 @@ type DeskProps = {
 }
 
 export default function Desk({ screen, interactive, onStart, onScreenHover, lampOn, screenGlow }: DeskProps) {
-  const keys = useStaticTexture(448, 160, paintKeys, [])
   const top = DESK_TOP
   return (
     <>
@@ -173,18 +141,10 @@ export default function Desk({ screen, interactive, onStart, onScreenHover, lamp
       {/* the screen's glow on the keyboard */}
       <pointLight position={[0, 1.1, -0.7]} color="#8fc8ff" intensity={screenGlow} distance={1.6} decay={2} />
 
-      <group position={[0, top + 0.011, -0.62]}>
-        <Block size={[0.44, 0.022, 0.14]} color="#f2f2f5" />
-        <mesh position={[0, 0.0115, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[0.42, 0.125]} />
-          <Toon color="#ffffff" map={keys} />
-        </mesh>
-      </group>
-      <Part position={[0.33, top + 0.012, -0.6]} scale={[0.032, 0.016, 0.05]} color="#f2f2f5" shape={<sphereGeometry args={[1, 16, 10]} />} />
+      <Peripherals />
 
       <Lamp interactive={interactive} autoOn={lampOn} />
       <Mug />
-      <Headphones />
       <Books />
       <DeskPlant />
     </>
