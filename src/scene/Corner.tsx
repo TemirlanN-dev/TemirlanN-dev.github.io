@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useMotion } from '../lib/motion'
@@ -180,11 +180,99 @@ function FloorPlant() {
   )
 }
 
+// ---------- bedding ----------
+
+/**
+ * A slab of fabric laid over a surface: flat in the middle, then rolling over both long edges
+ * in a soft curve and hanging straight down, with wrinkles. Built from a subdivided box so it
+ * has real thickness (and clean ink outlines); flat shading turns the wrinkles into facets.
+ */
+function drapeGeometry({ width, length, thickness, rest, wrinkle, seed }: { width: number; length: number; thickness: number; rest: number; wrinkle: number; seed: number }) {
+  const g = new THREE.BoxGeometry(width, thickness, length, 26, 1, 18)
+  const p = g.attributes.position
+  const R = 0.04 // radius of the roll over the edge
+  const arc = (Math.PI / 2) * R
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i)
+    const y = p.getY(i) // -thickness/2 .. thickness/2 through the fabric
+    const z = p.getZ(i)
+    const side = Math.sign(x) || 1
+    const over = Math.abs(x) - rest // how far past the edge of the surface underneath
+    const crumple = wrinkle * (Math.sin(x * 9 + z * 4 + seed) * Math.sin(z * 7 - seed) + 0.5 * Math.sin(x * 23 - z * 13 + seed * 2))
+    if (over <= 0) {
+      p.setXYZ(i, x, y + thickness / 2 + crumple, z)
+    } else if (over < arc) {
+      // rolling over the edge
+      const a = over / R
+      const r = R + y + thickness / 2
+      p.setXYZ(i, side * (rest + r * Math.sin(a)), thickness / 2 - R + r * Math.cos(a) + crumple * (1 - a / (Math.PI / 2)), z)
+    } else {
+      // hanging, with soft folds that grow toward the hem
+      const hang = over - arc
+      const fold = Math.sin(z * 22 + seed) * 0.012 * Math.min(1, hang / 0.08)
+      p.setXYZ(i, side * (rest + R + y + thickness / 2 + fold), thickness / 2 - R - hang, z)
+    }
+  }
+  g.computeVertexNormals()
+  return g
+}
+
+function paintGingham(c: CanvasRenderingContext2D, w: number, h: number) {
+  const cell = w / 4
+  c.fillStyle = '#f2f6ff'
+  c.fillRect(0, 0, w, h)
+  c.fillStyle = 'rgba(61, 109, 242, 0.55)'
+  for (let i = 0; i < 4; i += 2) {
+    c.fillRect(i * cell, 0, cell, h)
+    c.fillRect(0, i * cell, w, cell)
+  }
+  c.fillStyle = 'rgba(30, 70, 200, 0.45)'
+  for (let i = 0; i < 4; i += 2) for (let j = 0; j < 4; j += 2) c.fillRect(i * cell, j * cell, cell, cell)
+}
+
+/** Thick in the middle, pinched thin at the edges and corners. */
+const PILLOW = (() => {
+  const g = new THREE.BoxGeometry(1, 1, 1, 6, 2, 4)
+  const p = g.attributes.position
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) * 2
+    const z = p.getZ(i) * 2
+    p.setY(i, p.getY(i) * (1 - 0.55 * x * x) * (1 - 0.45 * z * z))
+  }
+  g.computeVertexNormals()
+  return g
+})()
+
+/** A little whale plush, for the sea outside. */
+function WhalePlush(props: { position: THREE.Vector3Tuple; rotation?: [number, number, number] }) {
+  const body = '#5f8fff'
+  return (
+    <group {...props}>
+      <Part position={[0, 0.05, 0]} scale={[0.1, 0.058, 0.068]} color={body} shape={<sphereGeometry args={[1, 8, 6]} />} />
+      <Part position={[-0.012, 0.03, 0]} scale={[0.072, 0.03, 0.05]} color="#eef3ff" ink={false} castShadow={false} shape={<sphereGeometry args={[1, 7, 5]} />} />
+      {/* tail: two flukes */}
+      {[-1, 1].map((s) => (
+        <Part key={s} position={[0.115, 0.075, s * 0.025]} rotation={[s * 0.5, 0, -0.5]} scale={[0.03, 0.008, 0.028]} color={body} shape={<sphereGeometry args={[1, 6, 4]} />} />
+      ))}
+      {/* fins and eyes */}
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <Part position={[-0.02, 0.025, s * 0.065]} rotation={[s * -0.6, 0.3, 0]} scale={[0.025, 0.006, 0.018]} color={body} ink={false} castShadow={false} shape={<sphereGeometry args={[1, 6, 4]} />} />
+          <Part position={[-0.07, 0.062, s * 0.034]} color="#1d1830" ink={false} castShadow={false} shape={<sphereGeometry args={[0.0065, 6, 4]} />} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
+// ---------- bed ----------
+
 const BED = { x: ROOM.halfWidth - 0.55, head: ROOM.back + 0.08, foot: 0.97, mattressTop: 0.46 }
 const BED_WOOD = '#b4865c'
 const BED_DARK = '#8b5e3c'
+const MATTRESS = { width: 0.94, height: 0.16 }
 
-/** A low wooden bed against the right wall: legs, frame, slatted headboard and footboard. */
+/** A low wooden bed against the right wall, made up with a draped duvet, pillows and a throw. */
 function Bed() {
   const { x, head, foot, mattressTop } = BED
   const length = foot - head
@@ -196,17 +284,42 @@ function Bed() {
     [x + 0.47, foot - 0.06],
   ]
   const slats = [-0.3, -0.1, 0.1, 0.3]
+
+  const gingham = useStaticTexture(256, 256, paintGingham, [])
+  useMemo(() => {
+    gingham.wrapS = gingham.wrapT = THREE.RepeatWrapping
+    gingham.repeat.set(7, 7)
+  }, [gingham])
+  const rest = MATTRESS.width / 2 + 0.005
+  const duvet = useMemo(() => drapeGeometry({ width: 1.36, length: 1.3, thickness: 0.05, rest, wrinkle: 0.009, seed: 1.3 }), [rest])
+  const turnDown = useMemo(() => drapeGeometry({ width: 1.38, length: 0.16, thickness: 0.035, rest: rest + 0.05, wrinkle: 0.006, seed: 4.1 }), [rest])
+  const throwBlanket = useMemo(() => drapeGeometry({ width: 1.26, length: 0.3, thickness: 0.03, rest: rest + 0.05, wrinkle: 0.004, seed: 7.7 }), [rest])
+  useEffect(() => () => [duvet, turnDown, throwBlanket].forEach((g) => g.dispose()), [duvet, turnDown, throwBlanket])
+  const duvetZ = foot - 0.72
+  const duvetTop = mattressTop + 0.05
+
   return (
     <group>
       {legs.map(([lx, lz]) => (
         <Block key={`${lx}${lz}`} size={[0.07, 0.1, 0.07]} position={[lx, 0.05, lz]} color={BED_DARK} />
       ))}
       <Block size={[1.02, 0.2, length - 0.04]} position={[x, 0.2, mid]} color={BED_WOOD} />
-      <Block size={[0.94, 0.16, length - 0.12]} position={[x, mattressTop - 0.08, mid + 0.02]} color="#f5f2ec" />
-      {/* duvet, its turned-down top edge, and a pillow */}
-      <Block size={[0.98, 0.05, 1.32]} position={[x, mattressTop + 0.02, foot - 0.74]} color={BLUE} />
-      <Block size={[0.98, 0.056, 0.13]} position={[x, mattressTop + 0.024, foot - 1.42]} color="#e8edf8" />
-      <Part position={[x, mattressTop + 0.05, head + 0.25]} scale={[0.3, 0.06, 0.16]} color="#ffffff" shape={<sphereGeometry args={[1, 7, 5]} />} />
+      {/* mattress in a fitted sheet, with a piped seam */}
+      <Block size={[MATTRESS.width, MATTRESS.height, length - 0.12]} position={[x, mattressTop - MATTRESS.height / 2, mid + 0.02]} color="#f7f5f0" />
+      <Block size={[MATTRESS.width + 0.006, 0.008, length - 0.115]} position={[x, mattressTop - 0.035, mid + 0.02]} color="#cdd6ea" ink={false} castShadow={false} />
+
+      {/* the duvet, with the top sheet turned down over its head end */}
+      <Part position={[x, mattressTop, duvetZ]} color="#ffffff" map={gingham} shape={<primitive object={duvet} attach="geometry" />} />
+      <Part position={[x, duvetTop - 0.012, duvetZ - 0.62]} color="#f7f8fc" shape={<primitive object={turnDown} attach="geometry" />} />
+      {/* a mustard throw folded across the foot, with a red stripe */}
+      <Part position={[x, duvetTop + 0.005, foot - 0.27]} rotation={[0, 0.03, 0]} color="#f2c14e" shape={<primitive object={throwBlanket} attach="geometry" />} />
+      <Block size={[0.92, 0.004, 0.035]} position={[x - 0.02, duvetTop + 0.04, foot - 0.33]} rotation={[0, 0.03, 0]} color={RED} ink={false} castShadow={false} />
+
+      {/* pillows: one propped against the headboard, one lying in front of it */}
+      <Part position={[x + 0.02, mattressTop + 0.11, head + 0.13]} rotation={[-1.05, 0.04, 0]} scale={[0.6, 0.13, 0.36]} color="#ffffff" shape={<primitive object={PILLOW} attach="geometry" />} />
+      <Part position={[x - 0.05, mattressTop + 0.05, head + 0.32]} rotation={[0.08, -0.12, 0.02]} scale={[0.56, 0.11, 0.32]} color="#d6e3ff" shape={<primitive object={PILLOW} attach="geometry" />} />
+      <WhalePlush position={[x - 0.3, mattressTop + 0.005, head + 0.5]} rotation={[0, 2.2, 0]} />
+
       {/* headboard: two posts, a top rail and slats */}
       {[-0.5, 0.5].map((dx) => (
         <Block key={dx} size={[0.07, 0.86, 0.07]} position={[x + dx, 0.43, head]} color={BED_DARK} />
