@@ -5,6 +5,7 @@ import { useMotion } from '../lib/motion'
 import { sfx } from '../lib/sound'
 import { ROOM } from './layout'
 import { useSceneTime } from './sceneTime'
+import { AlarmClock, Book } from './props'
 import { useStaticTexture } from './textures'
 import { Block, Clickable, Part, Toon } from './toon'
 
@@ -125,13 +126,14 @@ function WallDecor() {
 // ---------- furniture ----------
 
 function Bookshelf() {
-  const books: [h: number, color: string][] = [
-    [0.22, BLUE],
-    [0.2, '#f2c14e'],
-    [0.24, RED],
-    [0.18, '#5bb36a'],
-    [0.21, '#f1eee8'],
-    [0.23, '#7b61d9'],
+  // height, cover, spine accent, spine label
+  const books: [h: number, color: string, accent: string, label: string][] = [
+    [0.22, BLUE, '#f2c14e', '#f6efdc'],
+    [0.2, '#f2c14e', RED, '#fff8e6'],
+    [0.24, RED, '#f6efdc', '#2a2c36'],
+    [0.18, '#5bb36a', '#f2c14e', '#f6efdc'],
+    [0.21, '#f1eee8', BLUE, BLUE],
+    [0.23, '#7b61d9', '#f2c14e', '#f6efdc'],
   ]
   const top = 0.82
   return (
@@ -139,23 +141,13 @@ function Bookshelf() {
       <Block size={[0.76, top, 0.32]} position={[0, top / 2, 0]} color={WOOD} />
       <Block size={[0.68, 0.33, 0.02]} position={[0, 0.22, 0.155]} color="#b4865c" ink={false} />
       <Block size={[0.68, 0.33, 0.02]} position={[0, 0.6, 0.155]} color="#b4865c" ink={false} />
-      {books.map(([h, color], i) => (
-        <Block key={color} size={[0.045, h, 0.17]} position={[-0.3 + i * 0.05, top + h / 2, -0.02]} color={color} rotation={[0, 0, i === 5 ? -0.2 : 0]} />
+      {books.map(([h, color, accent, label], i) => (
+        <Book key={color} thickness={0.044} height={h} depth={0.17} color={color} accent={accent} label={label} position={[-0.3 + i * 0.05, top + h / 2, -0.02]} rotation={[0, 0, i === 5 ? -0.2 : 0]} />
       ))}
-      <Daruma position={[0.18, top, 0.02]} />
+      {/* turned toward the camera, which looks at this corner from the right */}
+      <AlarmClock position={[0.15, top, 0.03]} rotation={[0, 0.45, 0]} />
       <Part position={[0.3, top + 0.045, 0.02]} color="#e8e2d6" shape={<cylinderGeometry args={[0.04, 0.032, 0.09, 7]} />} />
       <Part position={[0.3, top + 0.12, 0.02]} scale={[0.03, 0.06, 0.03]} color="#5bb36a" shape={<sphereGeometry args={[1, 7, 5]} />} />
-    </group>
-  )
-}
-
-/** A daruma: red body, white face, one eye filled in (a wish in progress). */
-function Daruma(props: { position: THREE.Vector3Tuple }) {
-  return (
-    <group {...props}>
-      <Part position={[0, 0.075, 0]} scale={[0.07, 0.078, 0.065]} color={RED} shape={<sphereGeometry args={[1, 7, 5]} />} />
-      <Part position={[0.01, 0.09, 0.048]} scale={[0.045, 0.04, 0.025]} color="#fff6ea" ink={false} shape={<sphereGeometry args={[1, 7, 5]} />} />
-      <Part position={[-0.006, 0.095, 0.072]} color="#1d1830" ink={false} shape={<sphereGeometry args={[0.008, 7, 5]} />} />
     </group>
   )
 }
@@ -315,9 +307,8 @@ function Bed() {
       <Part position={[x, duvetTop + 0.005, foot - 0.27]} rotation={[0, 0.03, 0]} color="#f2c14e" shape={<primitive object={throwBlanket} attach="geometry" />} />
       <Block size={[0.92, 0.004, 0.035]} position={[x - 0.02, duvetTop + 0.04, foot - 0.33]} rotation={[0, 0.03, 0]} color={RED} ink={false} castShadow={false} />
 
-      {/* pillows: one propped against the headboard, one lying in front of it */}
-      <Part position={[x + 0.02, mattressTop + 0.11, head + 0.13]} rotation={[-1.05, 0.04, 0]} scale={[0.6, 0.13, 0.36]} color="#ffffff" shape={<primitive object={PILLOW} attach="geometry" />} />
-      <Part position={[x - 0.05, mattressTop + 0.05, head + 0.32]} rotation={[0.08, -0.12, 0.02]} scale={[0.56, 0.11, 0.32]} color="#d6e3ff" shape={<primitive object={PILLOW} attach="geometry" />} />
+      {/* one big pillow, leaning back a little against the headboard */}
+      <Part position={[x - 0.01, mattressTop + 0.09, head + 0.22]} rotation={[-0.32, -0.04, 0]} scale={[0.8, 0.24, 0.4]} color="#ffffff" shape={<primitive object={PILLOW} attach="geometry" />} />
       <WhalePlush position={[x - 0.3, mattressTop + 0.005, head + 0.5]} rotation={[0, 2.2, 0]} />
 
       {/* headboard: two posts, a top rail and slats */}

@@ -4,6 +4,7 @@ import { sfx } from '../lib/sound'
 import { DESK_TOP, MONITOR, SCREEN_CENTER, SCREEN_H, SCREEN_W } from './layout'
 import type { ScreenProgram } from './lockScreen'
 import Peripherals from './Peripherals'
+import { Book } from './props'
 import { useAnimatedTexture } from './textures'
 import { Block, Clickable, Part, Rod } from './toon'
 
@@ -78,17 +79,19 @@ function Mug() {
 }
 
 function Books() {
-  const stack: [w: number, h: number, d: number, color: string, turn: number][] = [
-    [0.22, 0.035, 0.16, '#e5232e', 0.05],
-    [0.2, 0.03, 0.15, BLUE, -0.08],
-    [0.21, 0.04, 0.155, '#f2c14e', 0.12],
+  // height (lying flat, it runs left to right), thickness, depth, cover, accent, label, turn
+  const stack: [h: number, t: number, d: number, color: string, accent: string, label: string, turn: number][] = [
+    [0.22, 0.035, 0.16, '#e5232e', '#f6efdc', '#2a2c36', 0.05],
+    [0.2, 0.03, 0.15, BLUE, '#f2c14e', '#f6efdc', -0.08],
+    [0.21, 0.04, 0.155, '#f2c14e', '#e5232e', '#fff8e6', 0.12],
   ]
   let y = DESK_TOP
   return (
     <group position={[0.36, 0, -1.0]}>
-      {stack.map(([w, h, d, color, turn]) => {
-        y += h
-        return <Block key={color} size={[w, h, d]} position={[0, y - h / 2, 0]} rotation={[0, turn, 0]} color={color} />
+      {stack.map(([h, t, d, color, accent, label, turn]) => {
+        y += t
+        // lay a standing book on its side (rotate about z), then turn it a little on the pile
+        return <Book key={color} thickness={t} height={h} depth={d} color={color} accent={accent} label={label} position={[0, y - t / 2, 0]} rotation={[0, turn, Math.PI / 2]} />
       })}
     </group>
   )
