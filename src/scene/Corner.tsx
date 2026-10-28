@@ -307,8 +307,8 @@ function Bed() {
       <Part position={[x, duvetTop + 0.005, foot - 0.27]} rotation={[0, 0.03, 0]} color="#f2c14e" shape={<primitive object={throwBlanket} attach="geometry" />} />
       <Block size={[0.92, 0.004, 0.035]} position={[x - 0.02, duvetTop + 0.04, foot - 0.33]} rotation={[0, 0.03, 0]} color={RED} ink={false} castShadow={false} />
 
-      {/* one big pillow, leaning back a little against the headboard */}
-      <Part position={[x - 0.01, mattressTop + 0.09, head + 0.22]} rotation={[-0.32, -0.04, 0]} scale={[0.8, 0.24, 0.4]} color="#ffffff" shape={<primitive object={PILLOW} attach="geometry" />} />
+      {/* one big pillow, propped up against the headboard and facing the room */}
+      <Part position={[x - 0.01, mattressTop + 0.09, head + 0.22]} rotation={[0.32, -0.04, 0]} scale={[0.8, 0.24, 0.4]} color="#ffffff" shape={<primitive object={PILLOW} attach="geometry" />} />
       <WhalePlush position={[x - 0.3, mattressTop + 0.005, head + 0.5]} rotation={[0, 2.2, 0]} />
 
       {/* headboard: two posts, a top rail and slats */}
