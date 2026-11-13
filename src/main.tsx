@@ -7,7 +7,6 @@ import '@fontsource/barlow-condensed/700.css'
 import '@fontsource/barlow-condensed/800-italic.css'
 import '@fontsource/barlow-semi-condensed/800-italic.css'
 import '@fontsource/press-start-2p/400.css'
-import '@fontsource/monoton/400.css'
 import './styles.css'
 import App from './App'
 

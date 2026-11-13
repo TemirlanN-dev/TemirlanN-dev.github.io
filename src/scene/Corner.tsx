@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import type { SectionId } from '../data/content'
 import { useMotion } from '../lib/motion'
 import { sfx } from '../lib/sound'
 import { ROOM } from './layout'
 import { useSceneTime } from './sceneTime'
 import { AlarmClock, Book } from './props'
 import { useStaticTexture } from './textures'
-import { Block, Clickable, Part, Toon } from './toon'
+import { Block, Clickable, Ink, Part, Toon } from './toon'
 
 const WOOD = '#d9b48a'
 const BLUE = '#3d6df2'
@@ -17,11 +19,17 @@ const WALL_Z = ROOM.back + 0.012
 
 // ---------- wall decorations ----------
 
-const NOTES: [text: string[], color: string, x: number, y: number, tilt: number][] = [
-  [['cassette', 'v0.2.0 shipped!'], '#fff27a', 40, 40, -0.06],
-  [['Ante', '363 tests ✓'], '#ffb3d1', 270, 34, 0.05],
-  [['Tiptap', 'PR #8532'], '#9fe0ff', 46, 196, 0.04],
-  [['learn Go', 'done-ish'], '#b8f5a8', 280, 200, -0.05],
+type OpenSection = (section: SectionId, project?: string) => void
+
+// Sticky notes on the corkboard, placed in the board's 512×384 canvas. Clicking one opens
+// the page it is about: `opens` is a section, plus a project id for the Projects page.
+const NOTE_PX = { w: 190, h: 150 }
+const CORK = { x: -1.84, y: 1.72, w: 0.6, h: 0.45, px: { w: 512, h: 384 } }
+const NOTES: [text: string[], color: string, x: number, y: number, tilt: number, opens: [SectionId, string?]][] = [
+  [['cassette', 'v0.2.0 shipped!'], '#fff27a', 40, 40, -0.06, ['projects', 'cassette']],
+  [['Ante', '363 tests ✓'], '#ffb3d1', 270, 34, 0.05, ['projects', 'ante']],
+  [['Tiptap', 'PR #8532'], '#9fe0ff', 46, 196, 0.04, ['experience']],
+  [['learn Go', 'done-ish'], '#b8f5a8', 280, 200, -0.05, ['stats']],
 ]
 
 function paintCorkboard(c: CanvasRenderingContext2D, w: number, h: number) {
@@ -103,22 +111,161 @@ function paintCalendar(c: CanvasRenderingContext2D, w: number, h: number) {
   }
 }
 
-function WallDecor() {
+/**
+ * The clickable area over one painted note: an invisible plane that shows the same cyan
+ * outline as every other clickable thing in the room while hovered.
+ */
+function NoteButton({ note, enabled, onOpen }: { note: (typeof NOTES)[number]; enabled: boolean; onOpen: OpenSection }) {
+  const [hovered, setHovered] = useState(false)
+  const [, , x, y, tilt, opens] = note
+  const w = (NOTE_PX.w / CORK.px.w) * CORK.w
+  const h = (NOTE_PX.h / CORK.px.h) * CORK.h
+  const cx = CORK.x + ((x + NOTE_PX.w / 2) / CORK.px.w - 0.5) * CORK.w
+  const cy = CORK.y + (0.5 - (y + NOTE_PX.h / 2) / CORK.px.h) * CORK.h
+  const line = 0.008
+  const edges: [x: number, y: number, w: number, h: number][] = [
+    [0, h / 2, w + line, line],
+    [0, -h / 2, w + line, line],
+    [-w / 2, 0, line, h + line],
+    [w / 2, 0, line, h + line],
+  ]
+  return (
+    // the canvas turns clockwise for a positive tilt, the wall the other way
+    <Clickable enabled={enabled} onClick={() => onOpen(...opens)} onHover={setHovered} position={[cx, cy, WALL_Z + 0.016]} rotation={[0, 0, -tilt]}>
+      <mesh>
+        <planeGeometry args={[w, h]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      {hovered &&
+        enabled &&
+        edges.map(([ex, ey, ew, eh], i) => (
+          <mesh key={i} position={[ex, ey, 0.001]}>
+            <planeGeometry args={[ew, eh]} />
+            <meshBasicMaterial color="#38c8ff" toneMapped={false} />
+          </mesh>
+        ))}
+    </Clickable>
+  )
+}
+
+function WallDecor({ interactive, onOpen }: { interactive: boolean; onOpen: OpenSection }) {
   const cork = useStaticTexture(512, 384, paintCorkboard, [`italic 700 44px ${NOTE_FONT}`])
   const calendar = useStaticTexture(384, 512, paintCalendar, [`italic 800 34px ${NOTE_FONT}`])
   return (
     <>
-      <Block size={[0.66, 0.5, 0.025]} position={[-1.84, 1.72, WALL_Z]} color="#8b5e3c" />
-      <mesh position={[-1.84, 1.72, WALL_Z + 0.014]}>
-        <planeGeometry args={[0.6, 0.45]} />
+      <Block size={[CORK.w + 0.06, CORK.h + 0.05, 0.025]} position={[CORK.x, CORK.y, WALL_Z]} color="#8b5e3c" />
+      <mesh position={[CORK.x, CORK.y, WALL_Z + 0.014]}>
+        <planeGeometry args={[CORK.w, CORK.h]} />
         <Toon color="#ffffff" map={cork} />
       </mesh>
+      {NOTES.map((note) => (
+        <NoteButton key={note[0][0]} note={note} enabled={interactive} onOpen={onOpen} />
+      ))}
       <Block size={[0.4, 0.54, 0.012]} position={[1.84, 1.68, WALL_Z]} color="#fbf8f2" />
       <mesh position={[1.84, 1.68, WALL_Z + 0.007]}>
         <planeGeometry args={[0.39, 0.52]} />
         <Toon color="#ffffff" map={calendar} />
       </mesh>
       <Part position={[1.84, 1.97, WALL_Z + 0.01]} color={RED} shape={<sphereGeometry args={[0.012, 7, 5]} />} />
+    </>
+  )
+}
+
+// ---------- wall shelf ----------
+
+/** A leaf-shaped blob coloured per vertex, so a whole plant can be merged into one mesh. */
+function leafGeometry(at: THREE.Vector3Tuple, scale: THREE.Vector3Tuple, turn: THREE.Vector3Tuple, color: string) {
+  const g = new THREE.SphereGeometry(1, 6, 4)
+  g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...at), new THREE.Quaternion().setFromEuler(new THREE.Euler(...turn)), new THREE.Vector3(...scale)))
+  const c = new THREE.Color(color)
+  const colors = new Float32Array(g.attributes.position.count * 3)
+  for (let i = 0; i < colors.length; i += 3) colors.set([c.r, c.g, c.b], i)
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  return g
+}
+
+const LEAF_GREENS = ['#5bb36a', '#4c9c5c', '#6cbf73']
+
+/** A potted pothos: a tuft on top and three vines trailing `drop` metres forward, over the shelf's edge. */
+function TrailingPlant({ position, drop }: { position: THREE.Vector3Tuple; drop: number }) {
+  const foliage = useMemo(() => {
+    const leaves: THREE.BufferGeometry[] = []
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2
+      leaves.push(leafGeometry([Math.cos(a) * 0.035, 0.1 + (i % 2) * 0.012, Math.sin(a) * 0.035], [0.03, 0.012, 0.042], [0.5, -a + Math.PI / 2, 0], LEAF_GREENS[i % 3]))
+    }
+    // each vine: where it leaves the pot (x), and how many leaves long it is
+    const vines: [x: number, length: number][] = [
+      [-0.045, 4],
+      [0.005, 5],
+      [0.05, 3],
+    ]
+    vines.forEach(([vx, length], v) => {
+      // up and over the rim, then straight down past the shelf's front edge
+      leaves.push(leafGeometry([vx, 0.085, drop * 0.55], [0.022, 0.012, 0.035], [0.5, 0, 0], LEAF_GREENS[v % 3]))
+      for (let k = 0; k < length; k++) {
+        const side = k % 2 ? 1 : -1
+        leaves.push(leafGeometry([vx + Math.sin(k * 1.7 + v) * 0.012, 0.045 - k * 0.055, drop], [0.022, 0.03, 0.008], [0, 0, side * 0.5], LEAF_GREENS[(k + v) % 3]))
+      }
+    })
+    const merged = mergeGeometries(leaves)!
+    leaves.forEach((l) => l.dispose())
+    return merged
+  }, [drop])
+  useEffect(() => () => foliage.dispose(), [foliage])
+
+  return (
+    <group position={position}>
+      <Part position={[0, 0.04, 0]} color="#d0764a" shape={<cylinderGeometry args={[0.05, 0.04, 0.08, 7]} />} />
+      <mesh geometry={foliage} castShadow receiveShadow>
+        <Toon color="#ffffff" vertexColors />
+        <Ink />
+      </mesh>
+    </group>
+  )
+}
+
+/** A little lighthouse for the sea outside; its lamp glows once the room's lights come on. */
+function Lighthouse({ position, lit }: { position: THREE.Vector3Tuple; lit: boolean }) {
+  return (
+    <group position={position}>
+      <Part position={[0, 0.055, 0]} color="#f7f5f0" shape={<cylinderGeometry args={[0.02, 0.028, 0.11, 7]} />} />
+      <Part position={[0, 0.055, 0]} color={RED} ink={false} castShadow={false} shape={<cylinderGeometry args={[0.0238, 0.0258, 0.03, 7]} />} />
+      <Part position={[0, 0.114, 0]} color="#2a2c36" ink={false} shape={<cylinderGeometry args={[0.027, 0.027, 0.008, 7]} />} />
+      <mesh position={[0, 0.132, 0]}>
+        <sphereGeometry args={[0.014, 7, 5]} />
+        <meshBasicMaterial color={lit ? LIGHTHOUSE_LIT : '#ffe9a0'} toneMapped={false} />
+      </mesh>
+      <Part position={[0, 0.16, 0]} color={RED} shape={<coneGeometry args={[0.024, 0.03, 7]} />} />
+    </group>
+  )
+}
+const LIGHTHOUSE_LIT = new THREE.Color(3.2, 2.6, 1.2)
+
+/** A wooden shelf on the wall above the bed, under the calendar. */
+function WallShelf({ night }: { night: boolean }) {
+  const x = 1.84
+  const depth = 0.17
+  const z = ROOM.back + depth / 2
+  const top = 1.185
+  return (
+    <>
+      <Block size={[0.62, 0.03, depth]} position={[x, top - 0.015, z]} color={WOOD} />
+      {[-0.22, 0.22].map((dx) => (
+        <Block key={dx} size={[0.025, 0.1, 0.12]} position={[x + dx, top - 0.08, ROOM.back + 0.06]} color="#8b5e3c" />
+      ))}
+
+      {/* a framed seascape, leaning back and turned toward the desk */}
+      <group position={[x - 0.2, top, z - 0.01]} rotation={[0, -0.35, 0]}>
+        <group rotation={[-0.14, 0, 0]}>
+          <Block size={[0.1, 0.13, 0.012]} position={[0, 0.065, 0]} color="#8b5e3c" />
+          <Block size={[0.078, 0.108, 0.002]} position={[0, 0.065, 0.0065]} color="#9fd2ff" ink={false} castShadow={false} />
+          <Block size={[0.078, 0.042, 0.002]} position={[0, 0.032, 0.0075]} color={BLUE} ink={false} castShadow={false} />
+          <Part position={[0.018, 0.088, 0.008]} color="#fff5d9" ink={false} castShadow={false} shape={<circleGeometry args={[0.011, 8]} />} />
+        </group>
+      </group>
+      <Lighthouse position={[x - 0.03, top, z]} lit={night} />
+      <TrailingPlant position={[x + 0.2, top, z - 0.01]} drop={depth / 2 + 0.022} />
     </>
   )
 }
@@ -459,10 +606,19 @@ function Cat({ interactive, onToast }: { interactive: boolean; onToast: (m: stri
   )
 }
 
-export default function Corner({ interactive, onToast }: { interactive: boolean; onToast: (m: string) => void }) {
+type CornerProps = {
+  interactive: boolean
+  /** the room's own lights are on (evening and night) */
+  night: boolean
+  onToast: (m: string) => void
+  onOpen: OpenSection
+}
+
+export default function Corner({ interactive, night, onToast, onOpen }: CornerProps) {
   return (
     <>
-      <WallDecor />
+      <WallDecor interactive={interactive} onOpen={onOpen} />
+      <WallShelf night={night} />
       <Bookshelf />
       <FloorPlant />
       <Bed />

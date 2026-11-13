@@ -5,8 +5,16 @@ import { sfx } from '../../lib/sound'
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
 
+// A sticky note in the room can ask for one project to be showing when this panel opens.
+let openWith: string | null = null
+export const showProjectFirst = (id: string | null) => {
+  openWith = id
+}
+
 export default function Projects() {
-  const [active, setActive] = useState(0)
+  const [active, setActive] = useState(() => Math.max(0, PROJECTS.findIndex((p) => p.id === openWith)))
+  // a one-time request: the next visit starts from the top again
+  useEffect(() => showProjectFirst(null), [])
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
 
   useEffect(() => {

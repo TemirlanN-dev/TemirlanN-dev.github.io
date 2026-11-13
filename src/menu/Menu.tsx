@@ -132,7 +132,7 @@ export default function Menu({ section, onSection, onExit }: MenuProps) {
       )}
 
       {section && (
-        <footer className="menu-foot">
+        <footer className="menu-foot is-in-panel">
           <div className="hints">
             {section === 'projects' && (
               <span>

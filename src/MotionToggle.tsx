@@ -7,6 +7,7 @@ export default function MotionToggle() {
     <button
       className="chip-btn"
       aria-pressed={on}
+      aria-label="Motion"
       onClick={() => {
         setMotion(!on)
         sfx.select()
@@ -16,7 +17,10 @@ export default function MotionToggle() {
         <path d="M1 9c2-3 4-3 6 0s4 3 6 0" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" />
         <path d="M1 5c2-3 4-3 6 0s4 3 6 0" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" opacity={on ? 1 : 0.35} />
       </svg>
-      Motion {on ? 'on' : 'off'}
+      <span>
+        <span className="chip-word">Motion </span>
+        {on ? 'on' : 'off'}
+      </span>
     </button>
   )
 }

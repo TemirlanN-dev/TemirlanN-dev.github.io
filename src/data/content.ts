@@ -209,10 +209,14 @@ export const SKILLS = [
   },
 ]
 
-// Copied from the GitHub profile README (github.com/TemirlanN-dev).
 export const ABOUT = {
   avatar: 'https://avatars.githubusercontent.com/u/62405040?v=4',
-  heading: 'Hi there 👋, Welcome To My Profile Page',
-  bullets: ['Exploring various fields of computer science', 'How to Reach Me: cdefrst58@gmail.com or temirlann26@outlook.com'],
-  bio: 'Here to code 😎',
+  heading: "Hi, I'm Temirlan",
+  bio: "I'm a Computer Science student at UBC who likes building tools that other developers and real users actually rely on.",
+  bullets: [
+    'Founder of Ante, an offline-first betting session tracker',
+    'Developer at UBC Launch Pad, building a collaborative system-design platform',
+    'Open source: cassette, an LLM test recorder written in Go, and a data-loss fix for Tiptap',
+    `Reach me: ${PROFILE.email}`,
+  ],
 }

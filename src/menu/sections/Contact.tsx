@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { PROFILE } from '../../data/content'
 import { sfx } from '../../lib/sound'
@@ -11,13 +11,16 @@ const CHANNELS = [
 
 export default function Contact() {
   const [copied, setCopied] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(timer.current), [])
 
   const copyEmail = async () => {
     try {
       await navigator.clipboard.writeText(PROFILE.email)
       sfx.select()
       setCopied(true)
-      setTimeout(() => setCopied(false), 1800)
+      clearTimeout(timer.current)
+      timer.current = setTimeout(() => setCopied(false), 1800)
     } catch {
       // clipboard blocked; the mailto link still works
     }
@@ -38,8 +41,8 @@ export default function Contact() {
             <span className="contact-value">{c.value}</span>
           </a>
           {c.kind === 'Email' && (
-            <button className="chip-btn copy-btn" onClick={copyEmail}>
-              {copied ? 'Copied!' : 'Copy'}
+            <button className="chip-btn copy-btn" onClick={copyEmail} aria-label="Copy email address">
+              <span aria-live="polite">{copied ? 'Copied!' : 'Copy'}</span>
             </button>
           )}
         </motion.li>

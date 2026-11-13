@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { Canvas } from '@react-three/fiber'
 import { PerformanceMonitor, Sparkles } from '@react-three/drei'
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
+import type { SectionId } from '../data/content'
 import type { Phase } from '../types'
 import { isCoarsePointer, isLowPower } from '../lib/env'
 import { useMotion } from '../lib/motion'
@@ -18,6 +19,8 @@ import WindowView from './WindowView'
 export type SceneProps = {
   phase: Phase
   onStart: () => void
+  /** dive into the monitor and open a section (and optionally one project) directly */
+  onOpen: (section: SectionId, project?: string) => void
   onZoomInDone: () => void
   onZoomOutDone: () => void
   onToast: (message: string) => void
@@ -65,7 +68,7 @@ function Lights({ lowPower, daylight }: { lowPower: boolean; daylight: Daylight 
   )
 }
 
-export default function Scene({ phase, onStart, onZoomInDone, onZoomOutDone, onToast, onReady }: SceneProps) {
+export default function Scene({ phase, onStart, onOpen, onZoomInDone, onZoomOutDone, onToast, onReady }: SceneProps) {
   // start light on phones; anywhere else, drop to light mode if the frame rate sags
   const [lowPower, setLowPower] = useState(isLowPower)
   const motion = useMotion()
@@ -95,9 +98,9 @@ export default function Scene({ phase, onStart, onZoomInDone, onZoomOutDone, onT
         <Lights lowPower={lowPower} daylight={daylight} />
         <WindowView daylight={daylight} />
         <Sea daylight={daylight} />
-        <Room interactive={interactive} />
+        <Room interactive={interactive} lightsOn={daylight.lampOn} />
         <Desk screen={screen} interactive={interactive} onStart={onStart} onScreenHover={setHovered} lampOn={daylight.lampOn} screenGlow={daylight.screenGlow} />
-        <Corner interactive={interactive} onToast={onToast} />
+        <Corner interactive={interactive} night={daylight.lampOn} onToast={onToast} onOpen={onOpen} />
         {/* dust drifting in the light from the window */}
         <Sparkles count={lowPower ? 20 : 45} scale={[2.2, 1.2, 1.4]} position={[0.3, 1.25, -0.4]} size={1.6} speed={motion ? 0.2 : 0} opacity={daylight.dust} color={daylight.light.color} />
         <CameraRig phase={phase} parallax={parallax} onZoomInDone={onZoomInDone} onZoomOutDone={onZoomOutDone} />

@@ -1,3 +1,4 @@
+import { isCoarsePointer } from '../lib/env'
 import { timeOfDay } from '../lib/timeOfDay'
 
 // The monitor's screen: a P3R-blue lock screen with the real clock, then a sign-in screen
@@ -87,6 +88,7 @@ export function createLockScreen() {
   Promise.all(LOCK_SCREEN_FONTS.map((f) => document.fonts.load(f))).then(repaint, () => {})
 
   let mode: ScreenMode = 'locked'
+  const prompt = isCoarsePointer() ? 'Tap to log in' : 'Click to log in'
   let bootAt = 0
   let now = 0
 
@@ -143,7 +145,7 @@ export function createLockScreen() {
     const hover = mode === 'hover'
     if (hover) selectionBlade(c, ax - 150, ay + 160, 300, 46)
     if (hover || Math.floor(t * 1.6) % 2 === 0) {
-      text(c, hover ? 'CLICK TO LOG IN' : 'Click to log in', ax, ay + 196, `800 italic ${hover ? 40 : 30}px ${DISPLAY}`, hover ? '#07070c' : '#e8fbff', 'center')
+      text(c, hover ? prompt.toUpperCase() : prompt, ax, ay + 196, `800 italic ${hover ? 40 : 30}px ${DISPLAY}`, hover ? '#07070c' : '#e8fbff', 'center')
     }
 
     // status bar

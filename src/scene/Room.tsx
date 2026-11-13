@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useMotion } from '../lib/motion'
@@ -193,7 +193,60 @@ function WindChime({ enabled }: { enabled: boolean }) {
   )
 }
 
-export default function Room({ interactive }: { interactive: boolean }) {
+const BULB_OFF = new THREE.Color('#efe6cf')
+const BULB_ON = new THREE.Color(3.2, 2.3, 1.2)
+
+/**
+ * Fairy lights pinned along the top of the window frame, hanging in shallow swags in front of
+ * the lattice. They come on with the desk lamp in the evening. The wire is one tube and the
+ * bulbs one instanced mesh, so the whole strand is two draw calls.
+ */
+function StringLights({ on }: { on: boolean }) {
+  const { wire, bulbs } = useMemo(() => {
+    const z = ROOM.back + 0.035
+    const pinY = WINDOW.top - 0.04
+    const pins = Array.from({ length: 8 }, (_, i) => -1.4 + i * 0.4)
+    const sag = (from: number, to: number, t: number) => new THREE.Vector3(from + (to - from) * t, pinY - 0.1 * 4 * t * (1 - t), z)
+    const path: THREE.Vector3[] = []
+    const bulbs: THREE.Vector3[] = []
+    for (let s = 0; s < pins.length - 1; s++) {
+      for (let k = 0; k < 6; k++) path.push(sag(pins[s], pins[s + 1], k / 6))
+      for (const t of [1 / 6, 1 / 2, 5 / 6]) {
+        const p = sag(pins[s], pins[s + 1], t)
+        bulbs.push(p.setY(p.y - 0.02))
+      }
+    }
+    path.push(sag(pins[pins.length - 2], pins[pins.length - 1], 1))
+    const curve = new THREE.CatmullRomCurve3(path, false, 'catmullrom', 0.25)
+    return { wire: new THREE.TubeGeometry(curve, path.length * 3, 0.004, 4, false), bulbs }
+  }, [])
+  useEffect(() => () => wire.dispose(), [wire])
+
+  const strand = useRef<THREE.InstancedMesh>(null)
+  useLayoutEffect(() => {
+    const mesh = strand.current
+    if (!mesh) return
+    const m = new THREE.Matrix4()
+    bulbs.forEach((b, i) => mesh.setMatrixAt(i, m.makeTranslation(b.x, b.y, b.z)))
+    mesh.instanceMatrix.needsUpdate = true
+  }, [bulbs])
+
+  return (
+    <>
+      <mesh geometry={wire}>
+        <meshBasicMaterial color="#3a3340" />
+      </mesh>
+      <instancedMesh ref={strand} args={[undefined, undefined, bulbs.length]} frustumCulled={false}>
+        <sphereGeometry args={[0.017, 6, 4]} />
+        <meshBasicMaterial color={on ? BULB_ON : BULB_OFF} toneMapped={false} />
+      </instancedMesh>
+      {/* their warm glow on the wall and sill; always mounted so switching on never recompiles shaders */}
+      <pointLight position={[0, WINDOW.top - 0.2, ROOM.back + 0.4]} color="#ffc98a" intensity={on ? 1.4 : 0} distance={2.6} decay={1.6} />
+    </>
+  )
+}
+
+export default function Room({ interactive, lightsOn }: { interactive: boolean; lightsOn: boolean }) {
   return (
     <>
       <Floor />
@@ -204,6 +257,7 @@ export default function Room({ interactive }: { interactive: boolean }) {
       <Curtain x={-1.2} />
       <Curtain x={1.2} />
       <WindChime enabled={interactive} />
+      <StringLights on={lightsOn} />
     </>
   )
 }
