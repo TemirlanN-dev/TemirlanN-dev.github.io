@@ -4,7 +4,7 @@ import { sfx } from '../lib/sound'
 import { DESK_TOP, MONITOR, SCREEN_CENTER, SCREEN_H, SCREEN_W } from './layout'
 import type { ScreenProgram } from './lockScreen'
 import Peripherals from './Peripherals'
-import { Book } from './props'
+import { Book, LEAF } from './props'
 import { useAnimatedTexture } from './textures'
 import { Block, Clickable, Part, Rod } from './toon'
 
@@ -98,20 +98,74 @@ function Books() {
 }
 
 function DeskPlant() {
-  const leaves = Array.from({ length: 7 }, (_, i) => {
-    const a = (i / 7) * Math.PI * 2
-    return { a, tilt: 0.35 + (i % 3) * 0.12, h: 0.1 + (i % 2) * 0.03 }
+  const leaves = Array.from({ length: 8 }, (_, i) => {
+    const a = (i / 8) * Math.PI * 2 + (i % 2) * 0.3
+    return { a, lift: 0.75 + (i % 3) * 0.22, length: 0.15 + (i % 2) * 0.04 }
   })
   return (
     <group position={[0.66, DESK_TOP, -1.02]}>
-      <Part position={[0, 0.06, 0]} color="#d0764a" shape={<cylinderGeometry args={[0.065, 0.05, 0.12, 7]} />} />
-      <Part position={[0, 0.118, 0]} color="#5a3a24" ink={false} shape={<cylinderGeometry args={[0.058, 0.058, 0.006, 7]} />} />
-      {leaves.map(({ a, tilt, h }) => (
+      <Part position={[0, 0.004, 0]} color="#b8623c" shape={<cylinderGeometry args={[0.058, 0.058, 0.008, 7]} />} />
+      <Part position={[0, 0.06, 0]} color="#d0764a" shape={<cylinderGeometry args={[0.062, 0.048, 0.11, 7]} />} />
+      <Part position={[0, 0.112, 0]} color="#dc8558" shape={<cylinderGeometry args={[0.07, 0.07, 0.02, 7]} />} />
+      <Part position={[0, 0.121, 0]} color="#5a3a24" ink={false} castShadow={false} shape={<cylinderGeometry args={[0.058, 0.058, 0.006, 7]} />} />
+      {leaves.map(({ a, lift, length }, i) => (
         <group key={a} position={[0, 0.12, 0]} rotation={[0, a, 0]}>
-          <Part position={[0, h * 0.9, 0.035]} rotation={[tilt, 0, 0]} scale={[0.022, h, 0.04]} color={a < 3 ? '#5bb36a' : '#4c9c5c'} shape={<sphereGeometry args={[1, 7, 5]} />} />
+          <Part position={[0, 0, 0.012]} rotation={[-lift, 0, 0]} scale={[0.085, 0.085, length]} color={i % 2 ? '#5bb36a' : '#4c9c5c'} shape={<primitive object={LEAF} attach="geometry" />} />
         </group>
       ))}
     </group>
+  )
+}
+
+/** A bar pull: two posts and the bar between them, standing off the face at z = 0. */
+function BarPull({ position, width }: { position: THREE.Vector3Tuple; width: number }) {
+  return (
+    <group position={position}>
+      {[-1, 1].map((side) => (
+        <Block key={side} size={[0.012, 0.012, 0.022]} position={[side * (width / 2 - 0.016), 0, 0.011]} color={DARK} ink={false} />
+      ))}
+      <Block size={[width, 0.016, 0.012]} position={[0, 0, 0.026]} color={DARK} />
+    </group>
+  )
+}
+
+/** The desk itself: a wooden top on a white panel leg and a three-drawer pedestal, tied together by a back panel. */
+function DeskFrame() {
+  const top = DESK_TOP
+  const under = top - 0.04 // underside of the desktop
+  const z = -0.82
+  // pedestal
+  const px = 0.57
+  const pw = 0.38
+  const pd = 0.6
+  const kick = 0.05
+  const front = z + pd / 2
+  const gap = 0.012
+  const faceTop = under - 0.022
+  const faceBottom = kick + 0.016
+  const faceH = (faceTop - faceBottom - 2 * gap) / 3
+  return (
+    <>
+      <Block size={[1.6, 0.04, 0.68]} position={[0, top - 0.02, z]} color={DESK_WOOD} />
+      {/* a darker edge band along the front of the top */}
+      <Block size={[1.602, 0.012, 0.004]} position={[0, top - 0.034, z + 0.34]} color="#b98f62" ink={false} castShadow={false} />
+      <Block size={[0.04, under, 0.62]} position={[-0.76, under / 2, z]} color={WHITE} />
+      <Block size={[1.14, 0.28, 0.02]} position={[-0.18, under - 0.14, z - 0.27]} color={WHITE} />
+
+      {/* pedestal: recessed plinth, carcass, and three drawer fronts standing proud of a shadowed face */}
+      <Block size={[pw - 0.03, kick, pd - 0.05]} position={[px, kick / 2, z - 0.01]} color="#8f8a80" />
+      <Block size={[pw, under - kick, pd]} position={[px, (under + kick) / 2, z]} color={WHITE} />
+      <Block size={[pw - 0.024, faceTop - faceBottom + 0.012, 0.004]} position={[px, (faceTop + faceBottom) / 2, front + 0.001]} color="#8f8a80" ink={false} castShadow={false} />
+      {[0, 1, 2].map((i) => {
+        const y = faceBottom + faceH / 2 + i * (faceH + gap)
+        return (
+          <group key={i}>
+            <Block size={[pw - 0.036, faceH, 0.016]} position={[px, y, front + 0.009]} color="#fbf9f4" />
+            <BarPull position={[px, y + faceH / 2 - 0.045, front + 0.017]} width={0.13} />
+          </group>
+        )
+      })}
+    </>
   )
 }
 
@@ -126,19 +180,9 @@ type DeskProps = {
 }
 
 export default function Desk({ screen, interactive, onStart, onScreenHover, lampOn, screenGlow }: DeskProps) {
-  const top = DESK_TOP
   return (
     <>
-      {/* desk: wooden top, a white side panel and a white drawer unit */}
-      <Block size={[1.6, 0.04, 0.68]} position={[0, top - 0.02, -0.82]} color={DESK_WOOD} />
-      <Block size={[0.04, top - 0.04, 0.62]} position={[-0.76, (top - 0.04) / 2, -0.82]} color={WHITE} />
-      <Block size={[0.38, top - 0.06, 0.6]} position={[0.57, (top - 0.06) / 2, -0.82]} color={WHITE} />
-      {[0.25, 0.48].map((y) => (
-        <Block key={y} size={[0.34, 0.006, 0.006]} position={[0.57, y, -0.52]} color="#c9c4ba" ink={false} />
-      ))}
-      {[0.14, 0.37, 0.6].map((y) => (
-        <Block key={y} size={[0.07, 0.014, 0.014]} position={[0.57, y, -0.515]} color={DARK} />
-      ))}
+      <DeskFrame />
 
       <Monitor screen={screen} interactive={interactive} onStart={onStart} onHover={onScreenHover} />
       {/* the screen's glow on the keyboard */}

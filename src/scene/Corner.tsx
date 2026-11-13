@@ -7,9 +7,9 @@ import { useMotion } from '../lib/motion'
 import { sfx } from '../lib/sound'
 import { ROOM } from './layout'
 import { useSceneTime } from './sceneTime'
-import { AlarmClock, Book } from './props'
+import { AlarmClock, Book, LEAF } from './props'
 import { useStaticTexture } from './textures'
-import { Block, Clickable, Ink, Part, Toon } from './toon'
+import { Block, Clickable, Ink, Part, Rod, Toon } from './toon'
 
 const WOOD = '#d9b48a'
 const BLUE = '#3d6df2'
@@ -272,7 +272,32 @@ function WallShelf({ night }: { night: boolean }) {
 
 // ---------- furniture ----------
 
-function Bookshelf() {
+/** One drawer of the dresser: a front panel with two turned knobs, on a box you only see when it is pulled out. */
+function Drawer({ y, width, height, front, depth, pull = 0, children }: { y: number; width: number; height: number; front: number; depth: number; pull?: number; children?: React.ReactNode }) {
+  return (
+    <group position={[0, y, front + pull]}>
+      <Block size={[width, height, 0.022]} position={[0, 0, -0.006]} color="#e6c9a2" />
+      {[-0.19, 0.19].map((x) => (
+        <group key={x} position={[x, 0.01, 0.005]} rotation={[Math.PI / 2, 0, 0]}>
+          <Part position={[0, 0.006, 0]} color={BED_DARK} ink={false} castShadow={false} shape={<cylinderGeometry args={[0.009, 0.011, 0.012, 7]} />} />
+          <Part position={[0, 0.019, 0]} color={BED_DARK} shape={<cylinderGeometry args={[0.021, 0.015, 0.016, 7]} />} />
+        </group>
+      ))}
+      {pull > 0 && (
+        <>
+          {[-1, 1].map((side) => (
+            <Block key={side} size={[0.012, height - 0.07, depth]} position={[side * (width / 2 - 0.012), -0.02, -0.017 - depth / 2]} color={BED_WOOD} />
+          ))}
+          <Block size={[width - 0.03, 0.01, depth]} position={[0, -height / 2 + 0.02, -0.017 - depth / 2]} color={BED_WOOD} ink={false} />
+          {children}
+        </>
+      )}
+    </group>
+  )
+}
+
+/** A chest of drawers in the corner: legs, a carcass with an overhanging top, and two drawers, the top one left ajar. */
+function Dresser() {
   // height, cover, spine accent, spine label
   const books: [h: number, color: string, accent: string, label: string][] = [
     [0.22, BLUE, '#f2c14e', '#f6efdc'],
@@ -283,11 +308,39 @@ function Bookshelf() {
     [0.23, '#7b61d9', '#f2c14e', '#f6efdc'],
   ]
   const top = 0.82
+  const W = 0.76
+  const D = 0.32
+  const leg = 0.08
+  const panel = 0.025 // thickness of the carcass boards
+  const slab = 0.03
+  const rail = 0.02 // the board between the two drawers
+  const inner = W - 2 * panel
+  const floor = leg + panel // top of the bottom board
+  const under = top - slab // underside of the top
+  const opening = (under - floor - rail) / 2
+  const front = D / 2
   return (
     <group position={[-1.86, 0, ROOM.back + 0.17]}>
-      <Block size={[0.76, top, 0.32]} position={[0, top / 2, 0]} color={WOOD} />
-      <Block size={[0.68, 0.33, 0.02]} position={[0, 0.22, 0.155]} color="#b4865c" ink={false} />
-      <Block size={[0.68, 0.33, 0.02]} position={[0, 0.6, 0.155]} color="#b4865c" ink={false} />
+      {[-1, 1].flatMap((sx) => [-1, 1].map((sz) => <Block key={`${sx}${sz}`} size={[0.05, leg, 0.05]} position={[sx * (W / 2 - 0.045), leg / 2, sz * (D / 2 - 0.045)]} color={BED_DARK} />))}
+      {/* carcass: two sides, bottom, the rail between the drawers, and the dark inside */}
+      {[-1, 1].map((side) => (
+        <Block key={side} size={[panel, under - leg, D]} position={[side * (W / 2 - panel / 2), (under + leg) / 2, 0]} color={WOOD} />
+      ))}
+      <Block size={[inner, panel, D]} position={[0, leg + panel / 2, 0]} color={WOOD} />
+      <Block size={[inner, rail, D - 0.008]} position={[0, floor + opening + rail / 2, 0]} color={WOOD} />
+      <Block size={[inner, under - floor, D - 0.03]} position={[0, (under + floor) / 2, -0.015]} color="#5a3a24" ink={false} />
+      <Block size={[W + 0.04, slab, D + 0.025]} position={[0, top - slab / 2, 0.0125]} color={BED_WOOD} />
+
+      <Drawer y={floor + opening / 2} width={inner - 0.012} height={opening - 0.012} front={front} depth={D - 0.05} />
+      <Drawer y={floor + opening + rail + opening / 2} width={inner - 0.012} height={opening - 0.012} front={front} depth={D - 0.05} pull={0.085}>
+        {/* folded clothes, and a striped sleeve left hanging over the edge */}
+        <Block size={[0.3, 0.05, 0.14]} position={[-0.16, opening / 2 - 0.05, -0.11]} color="#f7f5f0" />
+        <Block size={[0.26, 0.05, 0.14]} position={[0.17, opening / 2 - 0.055, -0.11]} color={BLUE} />
+        <Block size={[0.13, 0.014, 0.07]} position={[0.2, opening / 2 - 0.002, -0.03]} color={RED} />
+        <Block size={[0.13, 0.1, 0.012]} position={[0.2, opening / 2 - 0.05, 0.011]} rotation={[0, 0, 0.04]} color={RED} />
+        <Block size={[0.132, 0.016, 0.013]} position={[0.198, opening / 2 - 0.075, 0.0115]} rotation={[0, 0, 0.04]} color="#f7f5f0" ink={false} castShadow={false} />
+      </Drawer>
+
       {books.map(([h, color, accent, label], i) => (
         <Book key={color} thickness={0.044} height={h} depth={0.17} color={color} accent={accent} label={label} position={[-0.3 + i * 0.05, top + h / 2, -0.02]} rotation={[0, 0, i === 5 ? -0.2 : 0]} />
       ))}
@@ -299,22 +352,34 @@ function Bookshelf() {
   )
 }
 
+/** A rubber plant in a glazed pot: each leaf on its own stalk, spiralling up the stem. */
 function FloorPlant() {
-  const leaves = Array.from({ length: 9 }, (_, i) => ({
+  const leaves = Array.from({ length: 11 }, (_, i) => ({
     a: i * 2.4,
-    y: 0.45 + i * 0.07,
-    tilt: 0.5 + (i % 3) * 0.15,
+    y: 0.47 + i * 0.05,
+    pitch: 0.55 - i * 0.12, // low leaves hang, showing their faces; the top ones stand up
+    size: 1 - i * 0.04,
     color: i % 2 ? '#4f9e5f' : '#6cbf73',
   }))
   return (
     <group position={[-1.18, 0, -0.95]}>
-      <Part position={[0, 0.15, 0]} color="#e8e2d6" shape={<cylinderGeometry args={[0.13, 0.1, 0.3, 7]} />} />
-      {leaves.map(({ a, y, tilt, color }) => (
-        <group key={a} position={[0, y, 0]} rotation={[0, a, 0]}>
-          <Part position={[0, 0, 0.12]} rotation={[tilt, 0, 0]} scale={[0.09, 0.012, 0.15]} color={color} shape={<sphereGeometry args={[1, 7, 5]} />} />
-        </group>
-      ))}
-      <Part position={[0, 0.5, 0]} color="#4f7f4a" shape={<cylinderGeometry args={[0.01, 0.012, 0.5, 7]} />} />
+      <Part position={[0, 0.008, 0]} color="#cfc8ba" shape={<cylinderGeometry args={[0.125, 0.125, 0.016, 8]} />} />
+      <Part position={[0, 0.15, 0]} color="#e8e2d6" shape={<cylinderGeometry args={[0.13, 0.095, 0.27, 8]} />} />
+      <Part position={[0, 0.292, 0]} color="#f4efe5" shape={<cylinderGeometry args={[0.142, 0.142, 0.032, 8]} />} />
+      <Part position={[0, 0.306, 0]} color="#5a3a24" ink={false} castShadow={false} shape={<cylinderGeometry args={[0.122, 0.122, 0.008, 8]} />} />
+      <Part position={[0, 0.66, 0]} color="#4f7f4a" shape={<cylinderGeometry args={[0.009, 0.016, 0.72, 6]} />} />
+      {/* the new leaf, still furled at the tip */}
+      <Part position={[0, 1.07, 0]} color="#8fd18a" shape={<coneGeometry args={[0.02, 0.13, 5]} />} />
+      {leaves.map(({ a, y, pitch, size, color }) => {
+        const out = 0.06
+        const up = 0.05
+        return (
+          <group key={a} position={[0, y, 0]} rotation={[0, a, 0]}>
+            <Rod from={[0, 0, 0]} to={[0, up, out]} radius={0.006} color="#4f7f4a" ink={false} />
+            <Part position={[0, up, out]} rotation={[pitch, 0, 0]} scale={[0.2 * size, 0.2 * size, 0.3 * size]} color={color} shape={<primitive object={LEAF} attach="geometry" />} />
+          </group>
+        )
+      })}
     </group>
   )
 }
@@ -474,7 +539,8 @@ function Bed() {
       <Block size={[1.0, 0.24, 0.04]} position={[x, 0.42, foot]} color={BED_WOOD} />
       <Block size={[1.08, 0.05, 0.08]} position={[x, 0.56, foot]} color={BED_DARK} />
       {/* a floor cushion on the rug */}
-      <Block size={[0.48, 0.06, 0.48]} position={[-0.5, 0.04, 0.75]} rotation={[0, 0.3, 0]} color={RED} />
+      <Part position={[-0.5, 0.062, 0.75]} rotation={[0, 0.3, 0]} scale={[0.5, 0.12, 0.5]} color={RED} shape={<primitive object={PILLOW} attach="geometry" />} />
+      <Part position={[-0.5, 0.118, 0.75]} color="#f2c14e" ink={false} castShadow={false} shape={<sphereGeometry args={[0.014, 6, 4]} />} />
     </group>
   )
 }
@@ -619,7 +685,7 @@ export default function Corner({ interactive, night, onToast, onOpen }: CornerPr
     <>
       <WallDecor interactive={interactive} onOpen={onOpen} />
       <WallShelf night={night} />
-      <Bookshelf />
+      <Dresser />
       <FloorPlant />
       <Bed />
       <Cat interactive={interactive} onToast={onToast} />

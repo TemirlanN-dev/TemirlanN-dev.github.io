@@ -62,6 +62,26 @@ export function Book({ thickness, height, depth, color, accent = '#f2c14e', labe
   )
 }
 
+// ---------- leaves ----------
+
+/**
+ * A low-poly leaf lying along +z with its stalk end at the origin: 1 long, 1 wide. Broadest
+ * near the stalk, pointed at the tip, creased along the midrib and drooping a little toward
+ * the tip. Scale it [width, width, length].
+ */
+export const LEAF = (() => {
+  const g = new THREE.SphereGeometry(0.5, 6, 4)
+  g.rotateX(Math.PI / 2)
+  const p = g.attributes.position
+  for (let i = 0; i < p.count; i++) {
+    const t = p.getZ(i) + 0.5 // 0 at the stalk, 1 at the tip
+    const x = p.getX(i) * (1.25 - 0.6 * t)
+    p.setXYZ(i, x, p.getY(i) * 0.1 + Math.abs(x) * 0.4 - 0.12 * t * t, t)
+  }
+  g.computeVertexNormals()
+  return g
+})()
+
 // ---------- alarm clock ----------
 
 const SILVER = '#c9ced9'
